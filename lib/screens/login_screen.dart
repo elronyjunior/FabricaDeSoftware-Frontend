@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import 'Cadastro_Screen.dart';
+import 'api_test_screen.dart';
 
 class Loginscreen extends StatefulWidget {
   const Loginscreen({super.key});
@@ -8,6 +12,9 @@ class Loginscreen extends StatefulWidget {
 }
 
 class _LoginscreenState extends State<Loginscreen> {
+  final _emailController = TextEditingController(text: '');
+  final _senhaController = TextEditingController(text: '');
+  bool _isLoading = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -61,6 +68,7 @@ class _LoginscreenState extends State<Loginscreen> {
                                 const SizedBox(height: 8), 
 
                                 TextField(
+                                  controller: _emailController,
                                   decoration: InputDecoration(
                                     hintText: 'usuario@tegra.com.br',
                                     border: OutlineInputBorder(
@@ -78,6 +86,7 @@ class _LoginscreenState extends State<Loginscreen> {
                                 const SizedBox(height: 8),
 
                                 TextField(
+                                  controller: _senhaController,
                                   obscureText: true, 
                                   decoration: InputDecoration(
                                     hintText: '********',
@@ -106,7 +115,46 @@ class _LoginscreenState extends State<Loginscreen> {
                                 const SizedBox(height: 24),
                                 
                                 ElevatedButton(
-                                  onPressed: (){ print('Clicou em Entrar'); }, 
+                                  onPressed: _isLoading ? null : () async {
+                                    final email = _emailController.text.trim();
+                                    final senha = _senhaController.text;
+                                    if (email.isEmpty || senha.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Preencha email e senha')),
+                                      );
+                                      return;
+                                    }
+
+                                    setState(() => _isLoading = true);
+
+                                    try {
+                                        final auth = context.read<AuthProvider>();
+                                        final success = await auth.login(email, senha);
+
+                                        if (!mounted) return;
+
+                                        if (success) {
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => const ApiTestScreen()),
+                                          );
+                                        } else {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text(auth.error ?? 'Falha no login')),
+                                            );
+                                          }
+                                        }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Erro no login: ${e.toString()}')),
+                                        );
+                                      }
+                                    } finally {
+                                      if (mounted) setState(() => _isLoading = false);
+                                    }
+                                  },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color.fromARGB(255, 38, 57, 177),
                                     foregroundColor: Colors.white,
@@ -115,10 +163,9 @@ class _LoginscreenState extends State<Loginscreen> {
                                       borderRadius: BorderRadius.circular(8.0),
                                     ),
                                   ),
-                                  child: Text(
-                                    'Entrar',
-                                    style: TextStyle(fontSize: 18),
-                                  )
+                                  child: _isLoading
+                                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                      : const Text('Entrar', style: TextStyle(fontSize: 18)),
                                 ),
                                 const SizedBox(height: 32),
                                 Row(
@@ -128,7 +175,7 @@ class _LoginscreenState extends State<Loginscreen> {
                                     MouseRegion(
                                       cursor: SystemMouseCursors.click,
                                       child:GestureDetector(
-                                        onTap: () { print('Clicou em Cadastrar-se'); },
+                                        onTap: () { Navigator.push(context, MaterialPageRoute(builder: (context){return const CadastroScreen();}));},
                                         child:Text(
                                           'Cadastrar-se',
                                           style: TextStyle(
@@ -146,5 +193,12 @@ class _LoginscreenState extends State<Loginscreen> {
                 ),
           ),
     );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _senhaController.dispose();
+    super.dispose();
   }
 }
