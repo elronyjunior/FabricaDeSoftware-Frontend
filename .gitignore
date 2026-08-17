@@ -43,6 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-#backend
+
+# Variáveis de ambiente e segredos locais (defensivo — este app não usa hoje,
+# mas evita commit acidental caso passe a usar flutter_dotenv/--dart-define).
 .env
-serviceAccountKey.json

@@ -3,21 +3,12 @@ name: Frontend Tests
 on:
   push:
     branches: [main, develop]
-    paths:
-      - 'Frontend/fabrica_software_app/**'
-      - '.github/workflows/frontend-test.yml'
   pull_request:
     branches: [main, develop]
-    paths:
-      - 'Frontend/fabrica_software_app/**'
-      - '.github/workflows/frontend-test.yml'
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: Frontend/fabrica_software_app
 
     steps:
       - name: Checkout do código
