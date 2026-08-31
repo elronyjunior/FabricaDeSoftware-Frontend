@@ -31,6 +31,70 @@ class _CadastroScreenState extends State<CadastroScreen> {
     super.dispose();
   }
 
+  void _cadastrar() async {
+    if (!mounted) return;
+
+    final nome = _nomeController.text.trim();
+    final telefone = _telefoneController.text.trim();
+    final email = _emailController.text.trim();
+    final senha = _senhaController.text;
+    final confirmSenha = _confirmSenhaController.text;
+
+    if (nome.isEmpty || telefone.isEmpty || email.isEmpty || senha.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha todos os campos obrigatórios.')),
+      );
+      return;
+    }
+
+    if (senha != confirmSenha) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('As senhas não coincidem.')),
+      );
+      return;
+    }
+
+    if (senha.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A senha deve ter pelo menos 6 caracteres.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final auth = context.read<AuthProvider>();
+      final success = await auth.register(
+        nome: nome,
+        email: email,
+        senha: senha,
+        telefone: telefone,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const GerenciarProjetos()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(auth.error ?? 'Não foi possível criar a conta.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao criar conta: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _signInWithGoogle() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -197,9 +261,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
                       children: [
                         // BOTÃO CADASTRAR
                         ElevatedButton(
-                          onPressed: _isLoading ? null : () async {
-                             // ... (Sua lógica de cadastro aqui é a mesma) ...
-                          },
+                          onPressed: _isLoading ? null : _cadastrar,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color.fromARGB(255, 38, 57, 177),
                             foregroundColor: Colors.white,
