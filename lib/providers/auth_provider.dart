@@ -77,6 +77,49 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> register({
+    required String nome,
+    required String email,
+    required String senha,
+    String? telefone,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final success = await _authService.register(
+        nome: nome,
+        email: email,
+        senha: senha,
+        telefone: telefone,
+      );
+      _isLoading = false;
+
+      if (!success) {
+        _error ??= 'Não foi possível criar a conta.';
+      } else {
+        _isAuthenticated = true;
+        _userId = await _authService.userId;
+        _userNivel = await _authService.userNivel;
+        _email = email;
+        _nome = nome;
+      }
+      notifyListeners();
+      return success;
+    } on ApiException catch (e) {
+      _isLoading = false;
+      _error = e.message;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> loginWithGoogle() async {
     _isLoading = true;
     _error = null;

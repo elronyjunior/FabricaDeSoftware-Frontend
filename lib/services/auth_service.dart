@@ -79,6 +79,64 @@ class AuthService {
     }
   }
 
+  Future<bool> register({
+    required String nome,
+    required String email,
+    required String senha,
+    String? telefone,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/auth/register'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'nome': nome,
+          'email': email,
+          'senha': senha,
+          if (telefone != null && telefone.isNotEmpty) 'telefone': telefone,
+        }),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final prefs = await SharedPreferences.getInstance();
+
+        _cachedToken = json['token'];
+        _cachedUserId = json['usuario']['id'];
+        _cachedUserNivel = json['usuario']['nivel'];
+        _cachedUserName = json['usuario']['nome'];
+        _cachedUserEmail = json['usuario']['email'];
+        _lastTokenRefresh = DateTime.now();
+
+        await prefs.setString(_tokenKey, _cachedToken!);
+        await prefs.setInt(_userIdKey, _cachedUserId!);
+        await prefs.setString(_userNivelKey, _cachedUserNivel!);
+        if (_cachedUserName != null) {
+          await prefs.setString(_userNameKey, _cachedUserName!);
+        }
+        if (_cachedUserEmail != null) {
+          await prefs.setString(_userEmailKey, _cachedUserEmail!);
+        }
+        return true;
+      }
+
+      String message = 'Não foi possível criar a conta.';
+      try {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['message'] != null) {
+          message = body['message'].toString();
+        }
+      } catch (_) {}
+      throw ApiException(message);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Erro ao criar conta: ${e.toString()}');
+    }
+  }
+
   // --- MÉTODO NOVO ---
   Future<bool> loginWithGoogle() async {
     try {
