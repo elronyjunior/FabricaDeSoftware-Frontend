@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Modal_step.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Configuracao_Inicial_Projeto_step/Configuracao_Inicial_Projeto_step.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Levantamentos_Requisitos_step/Levantamentos_Requisitos_step.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Diagrama_Caso_Uso_step/Diagrama_Caso_Uso_step.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Alocacao_Recursos_step/Alocacao_Recursos_step.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Planejamento_Orcamento_step/Planejamento_Orcamento_step.dart';
 
@@ -17,6 +18,7 @@ class ModalCriacaoProjetoProvider with ChangeNotifier {
   final List<ModalStep> _stepsCriacao = [
     ConfiguracaoInicialProjetoStep(),
     LevantamentosRequisitosStep(),
+    DiagramaCasoUsoStep(),
     AlocacaoRecursosStep(),
     PlanejamentoOrcamentoStep(),
   ];
@@ -59,6 +61,8 @@ class ModalCriacaoProjetoProvider with ChangeNotifier {
   Widget returnFooter(BuildContext context) {
     return _listaAtiva[_indice].buildFooter(context);
   }
+
+  bool get temPainelProprio => _listaAtiva[_indice].temPainelProprio;
 
   String returnTitle() => _listaAtiva[_indice].title;
   String returnTabName() => _listaAtiva[_indice].tabName;

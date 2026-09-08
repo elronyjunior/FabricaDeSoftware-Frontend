@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
@@ -8,6 +10,7 @@ import 'package:fabrica_software_app/providers/secao_hover_provider.dart';
 import 'package:fabrica_software_app/screens/Documento/components/Secao_Widget.dart';
 import 'package:fabrica_software_app/screens/Documento/components/SecaoRevisao_Widget.dart';
 import 'package:fabrica_software_app/services/documento_pdf_builder.dart';
+import 'package:fabrica_software_app/services/documento_service.dart';
 
 const _corPrimaria = Color(0xFF8B5CF6);
 
@@ -29,31 +32,193 @@ class VisualizarDocumentoScreen extends StatefulWidget {
 
 class _VisualizarDocumentoScreenState extends State<VisualizarDocumentoScreen> {
   late final SecaoHoverProvider _hoverProvider;
-  late final DocumentoEditorProvider _editorProvider;
+  DocumentoEditorProvider? _editorProvider; // só criado pro formato "texto"
+
+  bool _carregando = true;
+  String? _erro;
+  Map<String, dynamic>? _conteudoDiagrama; // não-nulo = formato "mermaid"
 
   @override
   void initState() {
     super.initState();
     _hoverProvider = SecaoHoverProvider();
-    _editorProvider = DocumentoEditorProvider(documentoId: widget.documentoId, hoverProvider: _hoverProvider);
-    _editorProvider.carregar();
+    _decidirFormatoECarregar();
+  }
+
+  // Os dois formatos ("texto" e "diagrama Mermaid") são estruturalmente
+  // diferentes demais pra passar pelo mesmo DocumentoEditorProvider (que é
+  // todo montado em torno de secoes/tabelas editáveis, retrabalho de seções
+  // com IA, export em PDF por seção etc. - nada disso existe pra um
+  // diagrama). Por isso decidimos o formato ANTES de montar qualquer coisa,
+  // olhando o conteudo_json bruto, e só então seguimos por um dos dois
+  // caminhos completamente separados.
+  Future<void> _decidirFormatoECarregar() async {
+    try {
+      final conteudo = await DocumentoService().getConteudoDocumento(widget.documentoId);
+
+      if (!mounted) return;
+
+      if (conteudo != null && conteudo['formato'] == 'mermaid') {
+        setState(() {
+          _conteudoDiagrama = conteudo;
+          _carregando = false;
+        });
+        return;
+      }
+
+      // Formato "texto" (ou documento legado sem conteudo_json): segue o
+      // fluxo de edição já existente.
+      _editorProvider = DocumentoEditorProvider(documentoId: widget.documentoId, hoverProvider: _hoverProvider);
+      await _editorProvider!.carregar();
+      if (!mounted) return;
+      setState(() => _carregando = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _erro = 'Erro ao carregar documento: $e';
+        _carregando = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     _hoverProvider.dispose();
-    _editorProvider.dispose();
+    _editorProvider?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_carregando) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_erro != null) {
+      return Scaffold(body: Center(child: Text(_erro!, style: TextStyle(color: Colors.red.shade700))));
+    }
+
+    if (_conteudoDiagrama != null) {
+      return _VisualizarDiagramaMermaidBody(nomeArquivo: widget.nomeArquivo, conteudo: _conteudoDiagrama!);
+    }
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: _hoverProvider),
-        ChangeNotifierProvider.value(value: _editorProvider),
+        ChangeNotifierProvider.value(value: _editorProvider!),
       ],
       child: _VisualizarDocumentoBody(nomeArquivo: widget.nomeArquivo, arquivoUrl: widget.arquivoUrl),
+    );
+  }
+}
+
+// Corpo dedicado ao formato "Diagrama Mermaid" - sem edição de seções, sem
+// Google Docs (esse formato não passa por lá, ver salvarDocumentoMermaid.js
+// no backend), só a imagem já renderizada e o código Mermaid bruto. Mesmo
+// visual usado no passo do wizard (Diagrama_Caso_Uso_step.dart).
+class _VisualizarDiagramaMermaidBody extends StatelessWidget {
+  final String nomeArquivo;
+  final Map<String, dynamic> conteudo;
+
+  const _VisualizarDiagramaMermaidBody({required this.nomeArquivo, required this.conteudo});
+
+  @override
+  Widget build(BuildContext context) {
+    final titulo = (conteudo['titulo'] as String?) ?? nomeArquivo;
+    final atores = (conteudo['atores'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+    final mermaid = conteudo['mermaid'] as String?;
+    final imagemBase64 = conteudo['imagem_base64'] as String?;
+    final imagemBytes = imagemBase64 != null ? base64Decode(imagemBase64) : null;
+
+    return Scaffold(
+      backgroundColor: Colors.grey.shade300,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+        title: Text(
+          nomeArquivo,
+          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 18, offset: const Offset(0, 6))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(titulo, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  if (atores.isNotEmpty) ...[
+                    Text('Elementos identificados', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: atores.map((a) => _buildChip(a)).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  if (imagemBytes != null)
+                    Container(
+                      height: 460,
+                      width: double.infinity,
+                      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(10)),
+                      clipBehavior: Clip.antiAlias,
+                      child: InteractiveViewer(
+                        minScale: 0.5,
+                        maxScale: 4,
+                        boundaryMargin: const EdgeInsets.all(40),
+                        child: Center(child: Image.memory(imagemBytes)),
+                      ),
+                    )
+                  else
+                    Text('Não foi possível carregar a imagem do diagrama.', style: TextStyle(color: Colors.grey.shade600)),
+                  if (mermaid != null) ...[
+                    const SizedBox(height: 20),
+                    Text('Código Mermaid', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(8)),
+                      child: SelectableText(
+                        mermaid,
+                        style: const TextStyle(color: Colors.greenAccent, fontFamily: 'monospace', fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip(String nome) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _corPrimaria.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _corPrimaria.withOpacity(0.2)),
+      ),
+      child: Text(nome, style: const TextStyle(color: _corPrimaria, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }

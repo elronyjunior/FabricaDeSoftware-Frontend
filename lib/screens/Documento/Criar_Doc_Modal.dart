@@ -21,6 +21,7 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
   final _service = DocumentoService();
 
   String? _tipoSelecionado;
+  String _formatoSelecionado = 'Texto';
   bool _isLoading = false;
   String _statusLabel = "Gerando...";
   String? _estagioAtual;
@@ -35,6 +36,14 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
     {'label': 'Modelagem', 'icon': Icons.storage, 'color': Colors.pink},
     {'label': 'Testes', 'icon': Icons.bug_report, 'color': Colors.red},
     {'label': 'Código', 'icon': Icons.javascript, 'color': Colors.indigo},
+  ];
+
+  // Formato de saída: "Texto" gera o documento estruturado de sempre (vira
+  // Google Doc); "Diagrama Mermaid" pede um diagrama Mermaid renderizado em
+  // imagem, salvo só no banco (sem Google Docs).
+  final List<Map<String, dynamic>> _formatos = [
+    {'label': 'Texto', 'icon': Icons.article_outlined, 'color': Colors.blueGrey},
+    {'label': 'Diagrama Mermaid', 'icon': Icons.account_tree_outlined, 'color': Colors.deepPurple},
   ];
 
   @override
@@ -66,6 +75,7 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
         tipo: _tipoSelecionado!,
         titulo: _tituloController.text,
         descricao: _descricaoController.text,
+        formato: _formatoSelecionado == 'Diagrama Mermaid' ? 'mermaid' : 'texto',
         onStatusUpdate: (stage) {
           if (!mounted) return;
           setState(() {
@@ -116,6 +126,10 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
         return 0.30;
       case 'criando_documento_no_google_docs':
         return 0.82;
+      case 'renderizando_diagrama':
+        return 0.65;
+      case 'salvando_documento':
+        return 0.90;
       default:
         return _progresso;
     }
@@ -129,6 +143,8 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
     final teto = switch (stage) {
       'gerando_conteudo_com_ia' => 0.75,
       'criando_documento_no_google_docs' => 0.97,
+      'renderizando_diagrama' => 0.88,
+      'salvando_documento' => 0.98,
       _ => _progresso,
     };
 
@@ -153,6 +169,10 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
         return 'Gerando conteúdo com IA...';
       case 'criando_documento_no_google_docs':
         return 'Criando documento no Google Docs...';
+      case 'renderizando_diagrama':
+        return 'Renderizando diagrama...';
+      case 'salvando_documento':
+        return 'Salvando documento...';
       default:
         return 'Gerando...';
     }
@@ -187,7 +207,27 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
                         Wrap(
                           spacing: 12,
                           runSpacing: 12,
-                          children: _tipos.map((tipo) => _buildTypeCard(tipo)).toList(),
+                          children: _tipos
+                              .map((tipo) => _buildTypeCard(
+                                    tipo,
+                                    selecionado: _tipoSelecionado,
+                                    onSelect: (v) => setState(() => _tipoSelecionado = v),
+                                  ))
+                              .toList(),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildLabel("Formato do Documento"),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: _formatos
+                              .map((formato) => _buildTypeCard(
+                                    formato,
+                                    selecionado: _formatoSelecionado,
+                                    onSelect: (v) => setState(() => _formatoSelecionado = v),
+                                  ))
+                              .toList(),
                         ),
                         const SizedBox(height: 24),
                         _buildLabel("Título do Documento"),
@@ -384,10 +424,14 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
     );
   }
 
-  Widget _buildTypeCard(Map<String, dynamic> item) {
-    final isSelected = _tipoSelecionado == item['label'];
+  Widget _buildTypeCard(
+    Map<String, dynamic> item, {
+    required String? selecionado,
+    required ValueChanged<String> onSelect,
+  }) {
+    final isSelected = selecionado == item['label'];
     return InkWell(
-      onTap: () => setState(() => _tipoSelecionado = item['label']),
+      onTap: () => onSelect(item['label']),
       borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),

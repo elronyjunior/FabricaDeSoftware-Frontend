@@ -23,6 +23,15 @@ class ProjetoDTO {
   double? orcamentoEstimado;
   String? complexidade;
 
+  // Diagrama de casos de uso gerado no passo de IA do wizard - guardado aqui
+  // pra ser salvo (ApiService.criarProjetoCompleto) só depois que o projeto
+  // já existe e tem um id. Sem imagem = não salva nada no fim (não força a
+  // pessoa a ter gerado um diagrama pra concluir o projeto).
+  String? diagramaCasoUsoTitulo;
+  String? diagramaCasoUsoMermaid;
+  String? diagramaCasoUsoImagemBase64;
+  List<String> diagramaCasoUsoAtores = [];
+
   void clear() {
     id = null;
     nome = null;
@@ -41,6 +50,10 @@ class ProjetoDTO {
     dataFinalPrevista = null;
     orcamentoEstimado = null;
     complexidade = null;
+    diagramaCasoUsoTitulo = null;
+    diagramaCasoUsoMermaid = null;
+    diagramaCasoUsoImagemBase64 = null;
+    diagramaCasoUsoAtores = [];
   }
 
   void loadFromModel(Projeto p) {

@@ -85,6 +85,104 @@ class ApiService {
     }
   }
 
+  // Gera só o diagrama de casos de uso (Mermaid + SVG já renderizado) a
+  // partir dos requisitos ainda em memória no wizard - não depende de
+  // projeto salvo (sem projetoId). Retorna { titulo, atores, mermaid, svg,
+  // aviso_renderizacao }; "svg" pode vir null se o backend não conseguiu
+  // renderizar (nesse caso "aviso_renderizacao" explica o motivo e "mermaid"
+  // ainda traz o código bruto).
+  static Future<Map<String, dynamic>> gerarDiagramaCasoUso(
+    String nomeProjeto,
+    String? escopo,
+    List<Map<String, dynamic>> requisitos,
+  ) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/ai/gerar-diagrama-caso-uso');
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode({
+          "nomeProjeto": nomeProjeto,
+          "escopo": escopo,
+          "requisitos": requisitos,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        throw Exception('Erro na IA (${response.statusCode}): ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Falha de conexão com IA: $e');
+    }
+  }
+
+  // Chat com memória sobre a lista de requisitos - sem sessionId, começa uma
+  // sessão nova; com sessionId, continua a conversa. Sempre manda a lista
+  // atual de requisitos (a pessoa pode editar manualmente entre mensagens),
+  // e volta a lista COMPLETA já atualizada + uma resposta curta da IA.
+  static Future<Map<String, dynamic>> chatRequisitos({
+    String? sessionId,
+    required String mensagem,
+    required String nomeProjeto,
+    String? escopo,
+    required List<Map<String, dynamic>> requisitosAtuais,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/ai/chat-requisitos');
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode({
+          "sessionId": sessionId,
+          "mensagem": mensagem,
+          "nomeProjeto": nomeProjeto,
+          "escopo": escopo,
+          "requisitosAtuais": requisitosAtuais,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        final erro = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(erro['error'] ?? 'Erro no chat de requisitos (${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Falha de conexão com IA: $e');
+    }
+  }
+
+  // Pede um ajuste específico sobre um diagrama já gerado (mesmo sessionId
+  // devolvido por gerarDiagramaCasoUso) - o backend guarda o histórico da
+  // conversa, então não precisa reenviar requisitos/instruções anteriores.
+  static Future<Map<String, dynamic>> refinarDiagramaCasoUso(String sessionId, String instrucao) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/ai/refinar-diagrama-caso-uso');
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode({"sessionId": sessionId, "instrucao": instrucao}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        final erro = jsonDecode(utf8.decode(response.bodyBytes));
+        throw Exception(erro['error'] ?? 'Erro ao refinar diagrama (${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Falha de conexão com IA: $e');
+    }
+  }
+
   // Retorna Map com { "orcamento_estimado": double, "complexidade": string }
   static Future<Map<String, dynamic>> estimarOrcamentoBackend(Map<String, dynamic> dadosProjeto) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/ai/estimar-orcamento');
@@ -235,6 +333,29 @@ class ApiService {
             })
           );
         }
+      }
+    }
+
+    // e) Diagrama de Casos de Uso (gerado no wizard) - só salva se a pessoa
+    // chegou a gerar um diagrama; não é obrigatório pra concluir o projeto.
+    // Best-effort como os vínculos acima: não bloqueia a criação do projeto
+    // se essa chamada falhar.
+    final mermaid = dtoData['diagrama_caso_uso_mermaid'] as String?;
+    if (mermaid != null && mermaid.trim().isNotEmpty) {
+      try {
+        await http.post(
+          Uri.parse('${ApiConfig.baseUrl}/documentos/diagrama-mermaid'),
+          headers: headers,
+          body: jsonEncode({
+            "projetoId": projetoId,
+            "titulo": dtoData['diagrama_caso_uso_titulo'] ?? "Diagrama de Casos de Uso - ${dtoData['nome_projeto']}",
+            "mermaid": mermaid,
+            "imagemBase64": dtoData['diagrama_caso_uso_imagem_base64'],
+            "atores": dtoData['diagrama_caso_uso_atores'],
+          }),
+        );
+      } catch (e) {
+        print("Erro ao salvar diagrama de casos de uso: $e");
       }
     }
   }
