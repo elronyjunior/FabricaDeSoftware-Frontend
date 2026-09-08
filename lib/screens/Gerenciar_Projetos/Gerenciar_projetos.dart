@@ -75,7 +75,15 @@ void abrirModalCriacao(BuildContext context) {
         child: const ModalDeCriacao(),
       );
     },
-  );
+  ).then((_) {
+    // O modal só fecha via Navigator.pop (cancelar ou finalizar) - recarrega
+    // a lista nos dois casos. Sem isso, um projeto recém-criado só aparecia
+    // depois que a pessoa saía da tela e voltava (o que forçava o initState
+    // a rodar de novo).
+    if (context.mounted) {
+      context.read<ProjetosProvider>().carregarProjetos();
+    }
+  });
 }
 
 // ============================================================================

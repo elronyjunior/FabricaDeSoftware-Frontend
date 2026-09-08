@@ -28,6 +28,7 @@ class DocumentoService {
     required String tipo,
     required String titulo,
     required String descricao,
+    String formato = 'texto', // 'texto' (Google Docs) ou 'mermaid' (diagrama, só banco)
     void Function(String stage)? onStatusUpdate,
   }) async {
     final token = await AuthService.instance.token;
@@ -42,6 +43,7 @@ class DocumentoService {
         "tipoDocumento": tipo,
         "tituloDocumento": titulo,
         "descricaoExtra": descricao,
+        "formato": formato,
       }),
     );
 

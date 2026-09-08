@@ -228,9 +228,16 @@ class _PlanejamentoContentState extends State<_PlanejamentoContent> {
         "responsavel_id": projetoDraft.responsavel != null ? projetoDraft.responsavel!['id'] : usuarioLogadoId,
         
         "tecnologias": projetoDraft.tecnologias.map((t) => t['id']).toList(),
-        "equipe": projetoDraft.equipe, 
+        "equipe": projetoDraft.equipe,
         "recursos": projetoDraft.recursos.map((r) => r['id']).toList(),
-        "requisitos": projetoDraft.requisitos.toList()
+        "requisitos": projetoDraft.requisitos.toList(),
+
+        // Diagrama de Casos de Uso (se a pessoa gerou um no wizard) - ver
+        // ApiService.criarProjetoCompleto, item "e".
+        "diagrama_caso_uso_titulo": projetoDraft.diagramaCasoUsoTitulo,
+        "diagrama_caso_uso_mermaid": projetoDraft.diagramaCasoUsoMermaid,
+        "diagrama_caso_uso_imagem_base64": projetoDraft.diagramaCasoUsoImagemBase64,
+        "diagrama_caso_uso_atores": projetoDraft.diagramaCasoUsoAtores,
       };
 
       await ApiService.criarProjetoCompleto(payload);

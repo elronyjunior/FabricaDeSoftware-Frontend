@@ -13,12 +13,21 @@ class ModalDeCriacao extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<ModalCriacaoProjetoProvider>();
 
+    // Modal responsivo e bem maior que antes (era um tamanho fixo de
+    // 800x700) - dá espaço pro layout de duas colunas (conteúdo + chat de
+    // IA) dos passos de Requisitos e Diagrama, e deixa os outros passos mais
+    // confortáveis também.
+    final tamanhoTela = MediaQuery.of(context).size;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(16.0),
       child: Container(
         width: double.infinity,
-        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 700),
+        constraints: BoxConstraints(
+          maxWidth: (tamanhoTela.width * 0.92).clamp(800, 1400),
+          maxHeight: (tamanhoTela.height * 0.9).clamp(600, 900),
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10.0),
@@ -116,13 +125,20 @@ class ModalDeCriacao extends StatelessWidget {
             const Divider(height: 1, color: Color.fromARGB(50, 158, 158, 158)),
 
             // -------------------------------------------------------
-            // CORPO (Conteúdo Scrollável)
+            // CORPO
             // -------------------------------------------------------
+            // Passos com painel de chat próprio (Requisitos, Diagrama)
+            // controlam sua própria rolagem internamente (o conteúdo rola,
+            // o chat rola independente) - por isso não recebem o
+            // SingleChildScrollView genérico, que daria altura ilimitada e
+            // quebraria a lista de mensagens do chat.
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: provider.returnBody(context),
-              ),
+              child: provider.temPainelProprio
+                  ? provider.returnBody(context)
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(24.0),
+                      child: provider.returnBody(context),
+                    ),
             ),
 
             // -------------------------------------------------------

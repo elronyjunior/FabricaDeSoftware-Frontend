@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Chat_IA_Panel.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Modal_step.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Configuracao_Inicial_Projeto_step/components.dart';
 import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.dart';
@@ -42,6 +43,11 @@ class LevantamentosRequisitosStep extends ModalStep {
 
   @override
   List<Color> get cores => <Color>[Colors.blueAccent, Colors.purpleAccent];
+
+  // Layout próprio (conteúdo + painel de chat) - ver Modal_step.dart e
+  // Modal_de_criacao.dart.
+  @override
+  bool get temPainelProprio => true;
 
   final GlobalKey<_LevantamentoRequisitosContentState> _contentKey = GlobalKey();
 
@@ -141,6 +147,13 @@ class _LevantamentoRequisitosContentState extends State<_LevantamentoRequisitosC
   // Lista de requisitos local
   final List<RequisitoItem> requisitos = [];
 
+  // Chat de IA com memória - independente do botão "Gerar Requisitos com
+  // IA" (que continua um disparo único a partir do escopo). Sessão própria
+  // deste passo, sem relação com a sessão do passo de Diagrama.
+  String? _chatSessionId;
+  bool _isConversando = false;
+  final List<ChatMensagem> _mensagensChat = [];
+
   // --- MÉTODOS DE CONTROLE ---
 
   void limparDadosDestaEtapa() {
@@ -150,6 +163,8 @@ class _LevantamentoRequisitosContentState extends State<_LevantamentoRequisitosC
       _escopoController.clear();
       _novoTituloController.clear();
       _novaDescricaoController.clear();
+      _chatSessionId = null;
+      _mensagensChat.clear();
     });
   }
 
@@ -240,6 +255,83 @@ class _LevantamentoRequisitosContentState extends State<_LevantamentoRequisitosC
     } finally {
       setState(() => _isLoadingAI = false);
     }
+  }
+
+  // Mensagem enviada pelo chat: sempre manda a lista ATUAL de requisitos (a
+  // pessoa pode ter editado manualmente desde a última mensagem) e recebe de
+  // volta a lista COMPLETA já atualizada - por isso a reconciliação abaixo,
+  // em vez de simplesmente substituir a lista local.
+  Future<void> _enviarMensagemChat(String mensagem) async {
+    if (_isConversando) return;
+
+    setState(() {
+      _mensagensChat.add(ChatMensagem(texto: mensagem, deUsuario: true));
+      _isConversando = true;
+    });
+
+    try {
+      final nomeProjeto = projetoDraft.nome ?? 'Novo Projeto';
+      final requisitosAtuais = requisitos
+          .map((r) => {'titulo': r.titulo, 'descricao': r.descricao, 'tipo': r.tipo, 'prioridade': r.prioridade})
+          .toList();
+
+      final resultado = await ApiService.chatRequisitos(
+        sessionId: _chatSessionId,
+        mensagem: mensagem,
+        nomeProjeto: nomeProjeto,
+        escopo: _escopoController.text,
+        requisitosAtuais: requisitosAtuais,
+      );
+
+      final novaLista = _reconciliarRequisitos(resultado['requisitos'] as List<dynamic>? ?? []);
+      final respostaChat = resultado['resposta_chat'] as String?;
+
+      setState(() {
+        _chatSessionId = resultado['sessionId'] as String? ?? _chatSessionId;
+        requisitos
+          ..clear()
+          ..addAll(novaLista);
+        if (respostaChat != null && respostaChat.trim().isNotEmpty) {
+          _mensagensChat.add(ChatMensagem(texto: respostaChat, deUsuario: false));
+        }
+      });
+    } catch (e) {
+      setState(() => _mensagensChat.add(ChatMensagem(texto: 'Erro ao processar sua mensagem: $e', deUsuario: false)));
+    } finally {
+      if (mounted) setState(() => _isConversando = false);
+    }
+  }
+
+  // Casa cada item devolvido pela IA com um já existente (por título +
+  // descrição idênticos) pra preservar id/aprovação/edição de quem não foi
+  // tocado. Sem correspondência = item novo da IA (precisa aprovação). Um
+  // item que existia mas não veio na resposta foi removido a pedido do chat
+  // - a IA sempre devolve a lista completa, então ausência = remoção.
+  List<RequisitoItem> _reconciliarRequisitos(List<dynamic> novosDoBackend) {
+    return novosDoBackend.map((item) {
+      final titulo = (item['titulo'] as String?) ?? 'Requisito';
+      final descricao = (item['descricao'] as String?) ?? '';
+      final existente = _buscarRequisitoExistente(titulo, descricao);
+
+      if (existente != null) return existente;
+
+      return RequisitoItem(
+        id: DateTime.now().microsecondsSinceEpoch.toString() + titulo.hashCode.toString(),
+        titulo: titulo,
+        descricao: descricao,
+        tipo: (item['tipo'] as String?) ?? 'Funcional',
+        prioridade: (item['prioridade'] as String?) ?? 'Média',
+        isAiGenerated: true,
+        isApproved: false, // Requer aprovação, como qualquer sugestão da IA
+      );
+    }).toList();
+  }
+
+  RequisitoItem? _buscarRequisitoExistente(String titulo, String descricao) {
+    for (final r in requisitos) {
+      if (r.titulo == titulo && r.descricao == descricao) return r;
+    }
+    return null;
   }
 
   // --- LÓGICA DE EDIÇÃO ---
@@ -378,6 +470,31 @@ class _LevantamentoRequisitosContentState extends State<_LevantamentoRequisitosC
 
   @override
   Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 3,
+            child: SingleChildScrollView(child: _buildConteudoPrincipal()),
+          ),
+          const SizedBox(width: 20),
+          SizedBox(
+            width: 300,
+            child: ChatIAPanel(
+              mensagens: _mensagensChat,
+              isLoading: _isConversando,
+              onEnviar: _enviarMensagemChat,
+              placeholder: 'ex: adicione 3 requisitos de segurança, remova o requisito de login social...',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConteudoPrincipal() {
     int countFuncional = requisitos.where((r) => r.tipo == 'Funcional').length;
     int countNaoFuncional = requisitos.where((r) => r.tipo == 'Não Funcional').length;
 
