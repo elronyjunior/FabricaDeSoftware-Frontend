@@ -12,7 +12,7 @@ dependencies:
 
   # Ícones e UI
   cupertino_icons: ^1.0.8
-  font_awesome_flutter: ^10.9.1
+  font_awesome_flutter: ^10.9.2
   flutter_svg: ^2.2.2
 
   # Gerenciamento de Estado e Rotas
@@ -36,6 +36,7 @@ dependencies:
   fl_chart: ^0.68.0
   pdf: ^3.11.3
   printing: ^5.14.3
+  google_fonts: ^8.1.0
 
 dev_dependencies:
   flutter_test:

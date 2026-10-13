@@ -1,10 +1,10 @@
+import 'package:fabrica_software_app/screens/Login/Components/auth_components.dart';
 import 'package:fabrica_software_app/screens/Login/Styles/style_login.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
 import '../Gerenciar_Projetos/Gerenciar_projetos.dart';
-
 
 class Loginscreen extends StatefulWidget {
   const Loginscreen({super.key});
@@ -14,19 +14,22 @@ class Loginscreen extends StatefulWidget {
 }
 
 class _LoginscreenState extends State<Loginscreen> {
-  final _emailController = TextEditingController(text: '');
-  final _senhaController = TextEditingController(text: '');
+  final _emailController = TextEditingController();
+  final _senhaController = TextEditingController();
   bool _isLoading = false;
 
-  // --- FUNÇÃO NOVA ---
-  void _signInWithGoogle() async {
+  // ---------------- Lógica ----------------
+
+  Future<void> _autenticar(
+    Future<bool> Function(AuthProvider auth) acao,
+    String mensagemFalha,
+  ) async {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
       final auth = context.read<AuthProvider>();
-      final success = await auth.loginWithGoogle();
-
+      final success = await acao(auth);
       if (!mounted) return;
 
       if (success) {
@@ -35,220 +38,102 @@ class _LoginscreenState extends State<Loginscreen> {
           MaterialPageRoute(builder: (_) => const GerenciarProjetos()),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(auth.error ?? 'Falha no login com Google')),
-        );
+        _mostrarErro(auth.error ?? mensagemFalha);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro no login com Google: ${e.toString()}')),
-        );
-      }
+      _mostrarErro('$mensagemFalha: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-  // --- FIM DA FUNÇÃO NOVA ---
+
+  void _entrarComEmail() {
+    final email = _emailController.text.trim();
+    final senha = _senhaController.text;
+    if (email.isEmpty || senha.isEmpty) {
+      _mostrarErro('Preencha email e senha');
+      return;
+    }
+    _autenticar((auth) => auth.login(email, senha), 'Falha no login');
+  }
+
+  void _entrarComGoogle() {
+    _autenticar((auth) => auth.loginWithGoogle(), 'Falha no login com Google');
+  }
+
+  void _mostrarErro(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensagem)));
+  }
+
+  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 95, 115, 231),
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 450),
-          margin: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16.0),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8.0,
-                  spreadRadius: 1.0,
-                  offset: Offset(0, 2),
+    return AuthScaffold(
+      child: AutofillGroup(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const LogoTegra(),
+            const SizedBox(height: 4),
+            Text('Entre em sua conta',
+                textAlign: TextAlign.center, style: StyleLogin.titulo),
+            const SizedBox(height: 62),
+            CampoVidro(
+              controller: _emailController,
+              hint: 'Email',
+              icone: Icons.email,
+              teclado: TextInputType.emailAddress,
+              acao: TextInputAction.next,
+              autofill: const [AutofillHints.email],
+            ),
+            const SizedBox(height: 39),
+            CampoVidro(
+              controller: _senhaController,
+              hint: 'Senha',
+              icone: Icons.lock,
+              oculto: true,
+              acao: TextInputAction.done,
+              autofill: const [AutofillHints.password],
+              aoEnviar: (_) => _isLoading ? null : _entrarComEmail(),
+            ),
+            const SizedBox(height: 6),
+            ConstrainedBox(
+              constraints:
+                  const BoxConstraints(maxWidth: StyleLogin.campoLargura),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: LinkSublinhado(
+                  texto: 'Esqueci a senha',
+                  onTap: () => Navigator.pushNamed(context, '/Account'),
                 ),
-              ]),
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Image.asset(
-                  'assets/image/tegra_logo.png', // Verifique se esta imagem existe em assets/image/
-                  width: 35,
-                  height: 35,
+              ),
+            ),
+            const SizedBox(height: 30),
+            BotaoLaranja(
+              texto: 'Entrar',
+              carregando: _isLoading,
+              onPressed: _isLoading ? null : _entrarComEmail,
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text('Não tem uma conta? ', style: StyleLogin.rodape),
+                LinkSublinhado(
+                  texto: 'Cadastre-se',
+                  onTap: () => Navigator.pushNamed(context, '/Cadastro'),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Entre na sua conta',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  'Email*',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    hintText: 'usuario@tegra.com.br',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Senha*',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _senhaController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: '********',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/Account');
-                      },
-                      child: Text(
-                        'Esqueci a senha',
-                        style:
-                            TextStyle(color: Color.fromARGB(255, 83, 10, 255)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () async {
-                          final email = _emailController.text.trim();
-                          final senha = _senhaController.text;
-                          if (email.isEmpty || senha.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Preencha email e senha')),
-                            );
-                            return;
-                          }
-
-                          setState(() => _isLoading = true);
-
-                          try {
-                            final auth = context.read<AuthProvider>();
-                            final success = await auth.login(email, senha);
-
-                            if (!mounted) return;
-
-                            if (success) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const GerenciarProjetos()),
-                              );
-                            } else {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content:
-                                          Text(auth.error ?? 'Falha no login')),
-                                );
-                              }
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content:
-                                        Text('Erro no login: ${e.toString()}')),
-                              );
-                            }
-                          } finally {
-                            if (mounted) setState(() => _isLoading = false);
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 38, 57, 177),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : const Text('Entrar', style: TextStyle(fontSize: 18)),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Text('Não tem uma conta? '),
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                            onTap: () {
-                              Navigator.pushNamed(context, '/Cadastro');
-                            },
-                            child: Text('Cadastrar-se',
-                                style: TextStyle(
-                                  color: const Color.fromARGB(255, 83, 10, 255),
-                                  fontWeight: FontWeight.bold,
-                                ))),
-                      ),
-                    ]
-                  ),
-                // --- INÍCIO DAS ADIÇÕES ---
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                        child: Divider(thickness: 1, color: Colors.grey[300])),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text('OU', style: TextStyle(color: Colors.grey[600])),
-                    ),
-                    Expanded(
-                        child: Divider(thickness: 1, color: Colors.grey[300])),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  icon: SvgPicture.asset('assets/SVG/Google_logo.svg', width: 28,),
-                  label: const Text(
-                    'Entrar com Google',
-                    style: TextStyle(fontSize: 18, color: Colors.black87),
-                  ),
-                  onPressed: _isLoading ? null : _signInWithGoogle, 
-                  style:StyleLogin.btnGoogle
-                ),
-                const SizedBox(height: 32),
-                
               ],
             ),
-          ),
+            const SizedBox(height: 20),
+            const DivisorOu(),
+            const SizedBox(height: 24),
+            BotaoGoogle(onPressed: _isLoading ? null : _entrarComGoogle),
+          ],
         ),
       ),
     );
