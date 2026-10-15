@@ -1,274 +1,310 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:fabrica_software_app/providers/projetos_provider.dart';
+import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
-class FilterSection extends StatefulWidget {
-  const FilterSection({super.key});
+typedef FiltrosProjeto = ({String tipo, String status, String cliente});
+
+const FiltrosProjeto _semFiltros = (tipo: 'Todos', status: 'Todos', cliente: '');
+
+const _opcoesTipo = ['Todos', 'WEB', 'MOBILE', 'API', 'AI', 'DESKTOP', 'DATA'];
+const _opcoesStatus = ['Todos', 'Em processo', 'Concluído', 'Atrasado', 'Pausado'];
+
+// =====================================================================
+// Botão "Filtro" com contador de filtros ativos
+// =====================================================================
+
+class BotaoFiltro extends StatefulWidget {
+  const BotaoFiltro({super.key});
 
   @override
-  State<FilterSection> createState() => _FilterSectionState();
+  State<BotaoFiltro> createState() => _BotaoFiltroState();
 }
 
-class _FilterSectionState extends State<FilterSection> {
-  // Controladores para os campos de texto
-  final TextEditingController _nomeController = TextEditingController();
-  final TextEditingController _clienteController = TextEditingController();
+class _BotaoFiltroState extends State<BotaoFiltro> {
+  FiltrosProjeto _filtros = _semFiltros;
 
-  // Estado local para controlar os Dropdowns (necessário para o botão Limpar funcionar visualmente)
-  String _selectedTipo = 'Todos';
-  String _selectedStatus = 'Todos';
+  int get _ativos =>
+      (_filtros.tipo != 'Todos' ? 1 : 0) +
+      (_filtros.status != 'Todos' ? 1 : 0) +
+      (_filtros.cliente.isNotEmpty ? 1 : 0);
 
-  @override
-  void dispose() {
-    _nomeController.dispose();
-    _clienteController.dispose();
-    super.dispose();
-  }
+  Future<void> _abrir() async {
+    final resultado = await showDialog<FiltrosProjeto>(
+      context: context,
+      builder: (_) => _DialogFiltros(inicial: _filtros),
+    );
+    if (resultado == null || !mounted) return;
 
-  // Função para resetar tudo
-  void _limparTudo() {
-    // 1. Limpa no Provider (Lógica)
-    context.read<ProjetosProvider>().limparFiltros();
-    
-    // 2. Limpa visualmente (UI)
-    setState(() {
-      _nomeController.clear();
-      _clienteController.clear();
-      _selectedTipo = 'Todos';
-      _selectedStatus = 'Todos';
-    });
+    setState(() => _filtros = resultado);
+    final provider = context.read<ProjetosProvider>();
+    provider.setFiltroTipo(resultado.tipo);
+    provider.setFiltroStatus(resultado.status);
+    provider.setFiltroCliente(resultado.cliente);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16), // Bordas mais arredondadas
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: Colors.transparent,
+          shape: const StadiumBorder(
+            side: BorderSide(color: StyleProjetos.azulEscuro),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // --- CABEÇALHO DO FILTRO ---
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: _abrir,
+            child: Container(
+              height: StyleProjetos.controleAltura,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.pink.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.filter_list, color: Colors.pink, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    "Filtros de Pesquisa",
-                    style: TextStyle(
-                      fontSize: 16, 
-                      fontWeight: FontWeight.bold, 
-                      color: Color(0xFF1E293B)
-                    ),
-                  ),
+                  const Icon(Icons.filter_alt,
+                      size: 18, color: StyleProjetos.laranja),
+                  const SizedBox(width: 6),
+                  Text('Filtro', style: StyleProjetos.controle),
+                  const SizedBox(width: 4),
                 ],
               ),
-              TextButton.icon(
-                onPressed: _limparTudo,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text("Limpar"),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.grey.shade600,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              )
-            ],
+            ),
           ),
-          
-          const SizedBox(height: 20),
-          
-          // --- CAMPOS DE FILTRO ---
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              // 1. Input Nome
-              _buildInput(
-                "Nome do Projeto", 
-                "Buscar projeto...", 
-                width: 250,
-                controller: _nomeController,
-                icon: Icons.search,
-                onChanged: (value) => context.read<ProjetosProvider>().setFiltroNome(value),
+        ),
+        if (_ativos > 0)
+          Positioned(
+            top: -10,
+            right: -6,
+            child: Container(
+              width: 20,
+              height: 20,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: StyleProjetos.laranja,
+                shape: BoxShape.circle,
               ),
-
-              // 2. Dropdown Tipo (Bonito e Colorido)
-              _buildModernDropdown(
-                "Tipo",
-                // Opções
-                ["Todos", "WEB", "MOBILE", "API", "DESKTOP", "DATA"],
-                // Ícones correspondentes
-                [Icons.apps, Icons.language, Icons.smartphone, Icons.storage, Icons.monitor, Icons.analytics],
-                // Cores correspondentes
-                [Colors.grey, Colors.blue, Colors.purple, Colors.orange, Colors.indigo, Colors.teal],
-                width: 200,
-                selectedValue: _selectedTipo,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedTipo = val);
-                    context.read<ProjetosProvider>().setFiltroTipo(val);
-                  }
-                },
+              child: Text(
+                '$_ativos',
+                style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
               ),
-
-              // 3. Input Cliente
-              _buildInput(
-                "Cliente", 
-                "Nome do cliente...", 
-                width: 250,
-                controller: _clienteController,
-                icon: Icons.business,
-                onChanged: (value) => context.read<ProjetosProvider>().setFiltroCliente(value),
-              ),
-
-              // 4. Dropdown Status
-              _buildModernDropdown(
-                "Status",
-                ["Todos", "Em processo", "Concluído", "Atrasado", "Pausado"],
-                [Icons.filter_alt, Icons.access_time, Icons.check_circle, Icons.warning, Icons.pause_circle],
-                [Colors.grey, Colors.green, Colors.blue, Colors.red, Colors.orange],
-                width: 200,
-                selectedValue: _selectedStatus,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedStatus = val);
-                    context.read<ProjetosProvider>().setFiltroStatus(val);
-                  }
-                },
-              ),
-            ],
+            ),
           ),
-        ],
-      ),
+      ],
+    );
+  }
+}
+
+class _DialogFiltros extends StatefulWidget {
+  const _DialogFiltros({required this.inicial});
+  final FiltrosProjeto inicial;
+
+  @override
+  State<_DialogFiltros> createState() => _DialogFiltrosState();
+}
+
+class _DialogFiltrosState extends State<_DialogFiltros> {
+  late String _tipo = widget.inicial.tipo;
+  late String _status = widget.inicial.status;
+  late final _cliente = TextEditingController(text: widget.inicial.cliente);
+
+  @override
+  void dispose() {
+    _cliente.dispose();
+    super.dispose();
+  }
+
+  InputDecoration _decoracao({String? hint, IconData? icone}) =>
+      InputDecoration(
+        hintText: hint,
+        prefixIcon: icone == null ? null : Icon(icone, size: 18),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: StyleProjetos.laranja, width: 1.5),
+        ),
+      );
+
+  Widget _rotulo(String texto) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          texto,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: StyleProjetos.textoSecundario,
+          ),
+        ),
+      );
+
+  Widget _dropdown(
+      List<String> opcoes, String valor, ValueChanged<String> aoMudar) {
+    return DropdownButtonFormField<String>(
+      value: valor,
+      isExpanded: true,
+      borderRadius: BorderRadius.circular(12),
+      decoration: _decoracao(),
+      style: StyleProjetos.pesquisa.copyWith(fontSize: 14),
+      items: [
+        for (final o in opcoes) DropdownMenuItem(value: o, child: Text(o)),
+      ],
+      onChanged: (v) {
+        if (v != null) aoMudar(v);
+      },
     );
   }
 
-  // --- WIDGET AUXILIAR: INPUT DE TEXTO ---
-  Widget _buildInput(String label, String hint, {
-    required double width, 
-    required Function(String) onChanged,
-    required TextEditingController controller,
-    IconData? icon,
-  }) {
-    return SizedBox(
-      width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 48,
-            child: TextField(
-              controller: controller,
-              onChanged: onChanged,
-              decoration: InputDecoration(
-                prefixIcon: Icon(icon, size: 18, color: Colors.grey.shade400),
-                hintText: hint,
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10), 
-                  borderSide: BorderSide(color: Colors.grey.shade300)
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10), 
-                  borderSide: BorderSide(color: Colors.grey.shade200)
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10), 
-                  borderSide: const BorderSide(color: Colors.pink, width: 1.5)
-                ),
-              ),
-            ),
-          ),
+          const Icon(Icons.filter_alt, color: StyleProjetos.laranja),
+          const SizedBox(width: 8),
+          Text('Filtros', style: StyleProjetos.subtitulo),
         ],
       ),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _rotulo('Tipo'),
+            _dropdown(_opcoesTipo, _tipo, (v) => setState(() => _tipo = v)),
+            const SizedBox(height: 16),
+            _rotulo('Status'),
+            _dropdown(_opcoesStatus, _status, (v) => setState(() => _status = v)),
+            const SizedBox(height: 16),
+            _rotulo('Cliente'),
+            TextField(
+              controller: _cliente,
+              style: StyleProjetos.pesquisa.copyWith(fontSize: 14),
+              decoration:
+                  _decoracao(hint: 'Nome do cliente', icone: Icons.business),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, _semFiltros),
+          style: TextButton.styleFrom(
+              foregroundColor: StyleProjetos.textoSecundario),
+          child: const Text('Limpar filtros'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop<FiltrosProjeto>(context, (
+            tipo: _tipo,
+            status: _status,
+            cliente: _cliente.text.trim(),
+          )),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: StyleProjetos.laranja,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+          ),
+          child: const Text('Aplicar'),
+        ),
+      ],
     );
   }
+}
 
-  // --- WIDGET AUXILIAR: DROPDOWN MODERNO ---
-  Widget _buildModernDropdown(
-    String label, 
-    List<String> items, 
-    List<IconData> icons,
-    List<Color> colors, {
-    required double width, 
-    required String selectedValue,
-    required Function(String?) onChanged,
-  }) {
-    return SizedBox(
-      width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
-          const SizedBox(height: 8),
-          Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: selectedValue,
-                isExpanded: true,
-                icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
-                borderRadius: BorderRadius.circular(12),
-                elevation: 2,
-                dropdownColor: Colors.white,
-                items: items.asMap().entries.map((entry) {
-                  int idx = entry.key;
-                  String value = entry.value;
-                  
-                  // Pega o ícone e cor correspondente, ou usa padrão se não houver
-                  IconData icon = (idx < icons.length) ? icons[idx] : Icons.circle;
-                  Color color = (idx < colors.length) ? colors[idx] : Colors.grey;
+// =====================================================================
+// Campo de pesquisa por nome do projeto
+// =====================================================================
 
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Row(
-                      children: [
-                        Icon(icon, size: 16, color: color),
-                        const SizedBox(width: 10),
-                        Text(
-                          value, 
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF334155))
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: onChanged,
+class CampoPesquisa extends StatefulWidget {
+  const CampoPesquisa({super.key});
+
+  @override
+  State<CampoPesquisa> createState() => _CampoPesquisaState();
+}
+
+class _CampoPesquisaState extends State<CampoPesquisa> {
+  final _controller = TextEditingController();
+  final _foco = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _foco.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _foco.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final focado = _foco.hasFocus;
+
+    // A borda fica no Container (e não no TextField) para o campo ocupar
+    // exatamente a mesma altura da pílula "Filtro".
+    return GestureDetector(
+      onTap: _foco.requestFocus,
+      child: Container(
+        height: StyleProjetos.controleAltura,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius:
+              BorderRadius.circular(StyleProjetos.controleAltura / 2),
+          border: Border.all(
+            color: focado ? StyleProjetos.laranja : StyleProjetos.azulEscuro,
+            width: focado ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.search,
+                size: 18, color: StyleProjetos.azulEscuro),
+            const SizedBox(width: 8),
+            Expanded(
+              // `expands` faz o campo ocupar toda a altura da pílula e
+              // centralizar o texto na mesma linha do ícone.
+              child: TextField(
+                controller: _controller,
+                focusNode: _foco,
+                onChanged: (v) =>
+                    context.read<ProjetosProvider>().setFiltroNome(v),
+                style: StyleProjetos.pesquisa.copyWith(height: 1.2),
+                cursorColor: StyleProjetos.azulEscuro,
+                cursorHeight: 16,
+                expands: true,
+                maxLines: null,
+                minLines: null,
+                // Campo de uma linha só: Enter não quebra linha.
+                keyboardType: TextInputType.text,
+                textInputAction: TextInputAction.search,
+                inputFormatters: [
+                  FilteringTextInputFormatter.deny(RegExp(r'\n')),
+                ],
+                textAlignVertical: TextAlignVertical.center,
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: 'Pesquisa',
+                  hintStyle: StyleProjetos.pesquisa.copyWith(height: 1.2),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

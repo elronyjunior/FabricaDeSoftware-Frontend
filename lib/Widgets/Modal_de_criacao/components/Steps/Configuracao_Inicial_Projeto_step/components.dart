@@ -1,9 +1,8 @@
 // Helper para Labels com Asterisco Vermelho
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+
 class ComponentsConfiguracaoInicalProjeto {
-
-
-static Widget buildLabel(String text, {bool isRequired = false}) {
+  static Widget buildLabel(String text, {bool isRequired = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: RichText(
@@ -34,7 +33,8 @@ static Widget buildLabel(String text, {bool isRequired = false}) {
       hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
       border: InputBorder.none,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      suffixIcon: icon != null ? Icon(icon, color: Colors.grey, size: 20) : null,
+      suffixIcon:
+          icon != null ? Icon(icon, color: Colors.grey, size: 20) : null,
     );
   }
 

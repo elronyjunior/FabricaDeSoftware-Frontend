@@ -1,91 +1,81 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_de_criacao.dart';
+import 'package:fabrica_software_app/config/projeto_dto.dart';
+import 'package:fabrica_software_app/models/projeto.dart';
+import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.dart';
+import 'package:fabrica_software_app/providers/projetos_provider.dart';
+import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
+import 'package:fabrica_software_app/screens/Gerenciar_Projetos/components/visualizador_Projetos_Screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fabrica_software_app/models/projeto.dart';
-import 'package:fabrica_software_app/config/projeto_dto.dart';
-import 'package:fabrica_software_app/providers/projetos_provider.dart';
-import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.dart';
-import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_de_criacao.dart';
-import 'package:fabrica_software_app/screens/Gerenciar_Projetos/components/visualizador_Projetos_Screen.dart';
 
 class ProjectCard extends StatefulWidget {
-  final Projeto projeto;
   const ProjectCard({super.key, required this.projeto});
+  final Projeto projeto;
 
   @override
   State<ProjectCard> createState() => _ProjectCardState();
 }
 
 class _ProjectCardState extends State<ProjectCard> {
-  bool _isHovered = false;
+  bool _hover = false;
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Concluído': return Colors.blue.shade700;
-      case 'Atrasado': return Colors.red.shade700;
-      default: return Colors.green.shade700;
-    }
+  String get _tipo {
+    final tipo = (widget.projeto.tipo ?? '').trim();
+    return tipo.isNotEmpty ? tipo : (widget.projeto.modeloProjeto ?? 'Geral');
   }
 
-  Color _getStatusBgColor(String status) {
-    switch (status) {
-      case 'Concluído': return Colors.blue.shade50;
-      case 'Atrasado': return Colors.red.shade50;
-      default: return Colors.green.shade50;
+  IconData get _icone {
+    final t = _tipo.toUpperCase();
+    if (t.contains('WEB')) return Icons.language;
+    if (t.contains('MOBILE') || t.contains('APP')) return Icons.smartphone;
+    if (t.contains('API')) return Icons.code;
+    if (t == 'AI' || t == 'IA' || t.contains('CHATBOT')) {
+      return Icons.smart_toy_outlined;
     }
-  }
-
-  IconData _getIcon() {
-    final tipoVerificado = (widget.projeto.tipo ?? '').toUpperCase();
-    final fallback = tipoVerificado.isNotEmpty ? tipoVerificado : (widget.projeto.modeloProjeto ?? '').toUpperCase();
-    if (fallback.contains('WEB')) return Icons.language;
-    if (fallback.contains('MOBILE') || fallback.contains('APP')) return Icons.smartphone;
-    if (fallback.contains('API')) return Icons.storage;
-    if (fallback.contains('DESKTOP')) return Icons.monitor;
-    if (fallback.contains('DATA')) return Icons.analytics;
+    if (t.contains('DESKTOP')) return Icons.monitor;
+    if (t.contains('DATA')) return Icons.analytics;
     return Icons.folder_open;
   }
 
-  Color _getIconColor() {
-    final tipoVerificado = (widget.projeto.tipo ?? '').toUpperCase();
-    final fallback = tipoVerificado.isNotEmpty ? tipoVerificado : (widget.projeto.modeloProjeto ?? '').toUpperCase();
-    if (fallback.contains('WEB')) return Colors.blue;
-    if (fallback.contains('MOBILE')) return Colors.purple;
-    if (fallback.contains('API')) return Colors.orange;
-    if (fallback.contains('DESKTOP')) return Colors.indigo;
-    if (fallback.contains('DATA')) return Colors.teal;
-    return Colors.grey;
+  void _abrir() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VisualizarProjetoScreen(projeto: widget.projeto),
+      ),
+    );
   }
 
-  void _editarProjeto(BuildContext context) {
+  void _editar() {
     projetoDraft.loadFromModel(widget.projeto);
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) {
-        return ChangeNotifierProvider(
-          create: (_) {
-            final p = ModalCriacaoProjetoProvider();
-            p.iniciarEdicao();
-            return p;
-          },
-          child: const ModalDeCriacao(),
-        );
-      },
+      builder: (_) => ChangeNotifierProvider(
+        create: (_) => ModalCriacaoProjetoProvider()..iniciarEdicao(),
+        child: const ModalDeCriacao(),
+      ),
     );
   }
 
-  void _excluirProjeto(BuildContext context) {
+  void _excluir() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Excluir Projeto'),
-        content: Text('Deseja realmente apagar "${widget.projeto.nomeProjeto}"?'),
+        title: const Text('Excluir projeto'),
+        content:
+            Text('Deseja realmente apagar "${widget.projeto.nomeProjeto}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await context.read<ProjetosProvider>().excluirProjeto(widget.projeto.id ?? 0);
+              await context
+                  .read<ProjetosProvider>()
+                  .excluirProjeto(widget.projeto.id ?? 0);
             },
             child: const Text('Excluir', style: TextStyle(color: Colors.red)),
           ),
@@ -96,175 +86,221 @@ class _ProjectCardState extends State<ProjectCard> {
 
   @override
   Widget build(BuildContext context) {
-    final status = widget.projeto.statusCalculado;
-    final statusColor = _getStatusColor(status);
-    final statusBgColor = _getStatusBgColor(status);
-    final icon = _getIcon();
-    final iconColor = _getIconColor();
+    final p = widget.projeto;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: Stack(
-        children: [
-          // 1. CARD PRINCIPAL (CLICÁVEL)
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => VisualizarProjetoScreen(projeto: widget.projeto),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color.fromARGB(255, 230, 228, 228)),
-                  ),
-                  child: Column(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: Container(
+        decoration: StyleProjetos.superficie(),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(StyleProjetos.cardRaio),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: _abrir,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 25, 25, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Cabeçalho: ícone, nome/cliente e status
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: iconColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                      _IconeTipo(icone: _icone),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 2),
+                            Text(
+                              p.nomeProjeto,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: StyleProjetos.cardTitulo,
                             ),
-                            child: Icon(icon, color: iconColor, size: 24),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.projeto.nomeProjeto,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  widget.projeto.clienteNome ?? 'Cliente não inf.',
-                                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                                ),
-                              ],
+                            const SizedBox(height: 4),
+                            Text(
+                              p.clienteNome ?? 'Cliente não informado',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: StyleProjetos.cardCliente,
                             ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: statusBgColor,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              status,
-                              style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      
-                      const Spacer(),
-                      
-                      // Descrição
-                      Text(
-                        widget.projeto.descricao ?? 'Sem descrição',
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13, height: 1.4),
-                      ),
-                      
-                      const Spacer(),
-                      
-                      // Footer
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const CircleAvatar(
-                            backgroundColor: Color(0xFFEEEEEE),
-                            radius: 14,
-                            child: Icon(Icons.person, size: 16, color: Colors.grey),
-                          ),
-                          Text(
-                            widget.projeto.tipo ?? 'Geral',
-                            style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      )
+                      const SizedBox(width: 8),
+                      _PillStatus(status: p.statusCalculado),
                     ],
                   ),
-                ),
-              ),
-            ),
-          ),
-
-          // 2. BOTÕES DE AÇÃO (HOVER - RODAPÉ)
-          if (_isHovered)
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _IconAction(
-                    icon: Icons.edit,
-                    color: Colors.blueGrey,
-                    onTap: () => _editarProjeto(context),
+                  const SizedBox(height: 19),
+                  Text(
+                    p.descricao ?? 'Sem descrição',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: StyleProjetos.cardDescricao,
                   ),
-                  const SizedBox(width: 4),
-                  _IconAction(
-                    icon: Icons.delete,
-                    color: Colors.red.shade400,
-                    onTap: () => _excluirProjeto(context),
+                  const Spacer(),
+                  // Rodapé: equipe e tipo (ou ações no hover)
+                  SizedBox(
+                    height: 30,
+                    child: Row(
+                      children: [
+                        // TODO: passar as fotos da equipe quando o modelo
+                        // Projeto tiver a lista de membros.
+                        const _Avatares(fotos: [], total: 0),
+                        const Spacer(),
+                        if (_hover) ...[
+                          _Acao(
+                            icone: Icons.edit,
+                            dica: 'Editar',
+                            cor: StyleProjetos.azulEscuro,
+                            onTap: _editar,
+                          ),
+                          const SizedBox(width: 6),
+                          _Acao(
+                            icone: Icons.delete,
+                            dica: 'Excluir',
+                            cor: Colors.red.shade400,
+                            onTap: _excluir,
+                          ),
+                        ] else
+                          Text(_tipo.toUpperCase(),
+                              style: StyleProjetos.cardRodape),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
 }
 
-class _IconAction extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
+// =====================================================================
+// Componentes do card
+// =====================================================================
 
-  const _IconAction({required this.icon, required this.color, required this.onTap});
+class _IconeTipo extends StatelessWidget {
+  const _IconeTipo({required this.icone});
+  final IconData icone;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9), // Fundo sutil para leitura
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: const BoxDecoration(
+        color: StyleProjetos.azulEscuro,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icone, color: Colors.white, size: 24),
+    );
+  }
+}
+
+class _PillStatus extends StatelessWidget {
+  const _PillStatus({required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final estilo = EstiloStatus.de(status);
+    return Container(
+      height: 22,
+      constraints: const BoxConstraints(minWidth: 62),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        gradient: estilo.gradiente,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Text(
+        status,
+        style: StyleProjetos.pill.copyWith(color: estilo.corTexto),
+      ),
+    );
+  }
+}
+
+/// Mostra até 2 fotos da equipe e "+N" para o restante.
+class _Avatares extends StatelessWidget {
+  const _Avatares({required this.fotos, required this.total});
+
+  final List<String> fotos;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    if (fotos.isEmpty) return const _Avatar();
+
+    final visiveis = fotos.take(2).toList();
+    final restantes = total - visiveis.length;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final url in visiveis) ...[
+          _Avatar(url: url),
+          const SizedBox(width: 8),
+        ],
+        if (restantes > 0) Text('+$restantes', style: StyleProjetos.cardRodape),
+      ],
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({this.url});
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: 12,
+      backgroundColor: const Color(0xFFD9DBE5),
+      backgroundImage: url == null ? null : NetworkImage(url!),
+      child: url == null
+          ? const Icon(Icons.person,
+              size: 15, color: StyleProjetos.textoSecundario)
+          : null,
+    );
+  }
+}
+
+class _Acao extends StatelessWidget {
+  const _Acao({
+    required this.icone,
+    required this.dica,
+    required this.cor,
+    required this.onTap,
+  });
+
+  final IconData icone;
+  final String dica;
+  final Color cor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: dica,
+      child: Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        elevation: 1,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(icone, size: 16, color: cor),
           ),
-          child: Icon(icon, size: 18, color: color),
         ),
       ),
     );

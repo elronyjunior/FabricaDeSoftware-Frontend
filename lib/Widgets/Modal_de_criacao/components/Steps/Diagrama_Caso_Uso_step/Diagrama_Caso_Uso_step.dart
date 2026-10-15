@@ -64,7 +64,9 @@ class DiagramaCasoUsoStep extends ModalStep {
               Navigator.pop(context);
             },
             icon: const Icon(Icons.close, size: 16, color: Colors.black87),
-            label: const Text('Cancelar', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.normal)),
+            label: const Text('Cancelar',
+                style: TextStyle(
+                    color: Colors.black87, fontWeight: FontWeight.normal)),
           ),
 
           Row(
@@ -78,10 +80,13 @@ class DiagramaCasoUsoStep extends ModalStep {
                   context.read<ModalCriacaoProjetoProvider>().previousIndex();
                 },
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
-                child: const Text('Voltar', style: TextStyle(color: Colors.black87)),
+                child: const Text('Voltar',
+                    style: TextStyle(color: Colors.black87)),
               ),
 
               const SizedBox(width: 12),
@@ -97,8 +102,10 @@ class DiagramaCasoUsoStep extends ModalStep {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2962FF),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
                 child: Row(
                   children: const [
@@ -120,13 +127,15 @@ class _DiagramaCasoUsoContent extends StatefulWidget {
   const _DiagramaCasoUsoContent({super.key});
 
   @override
-  State<_DiagramaCasoUsoContent> createState() => _DiagramaCasoUsoContentState();
+  State<_DiagramaCasoUsoContent> createState() =>
+      _DiagramaCasoUsoContentState();
 }
 
 class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
   bool _isLoading = false;
   bool _isConversando = false;
-  String? _sessionId; // não-nulo = já dá pra conversar (ver ApiService.refinarDiagramaCasoUso)
+  String?
+      _sessionId; // não-nulo = já dá pra conversar (ver ApiService.refinarDiagramaCasoUso)
   String? _tituloAtual;
   String? _mermaidCode;
   Uint8List? _imagemBytes;
@@ -217,10 +226,12 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
     });
 
     try {
-      final resultado = await ApiService.refinarDiagramaCasoUso(_sessionId!, mensagem);
+      final resultado =
+          await ApiService.refinarDiagramaCasoUso(_sessionId!, mensagem);
       _aplicarResultado(resultado);
     } catch (e) {
-      setState(() => _mensagensChat.add(ChatMensagem(texto: 'Erro ao ajustar o diagrama: $e', deUsuario: false)));
+      setState(() => _mensagensChat.add(ChatMensagem(
+          texto: 'Erro ao ajustar o diagrama: $e', deUsuario: false)));
     } finally {
       if (mounted) setState(() => _isConversando = false);
     }
@@ -235,7 +246,9 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
       _tituloAtual = resultado['titulo'] as String?;
       _mermaidCode = resultado['mermaid'] as String?;
       _imagemBytes = imagemBase64 != null ? base64Decode(imagemBase64) : null;
-      _atores = (resultado['atores'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+      _atores = (resultado['atores'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList();
       _avisoRenderizacao = resultado['aviso_renderizacao'] as String?;
       if (respostaChat != null && respostaChat.trim().isNotEmpty) {
         _mensagensChat.add(ChatMensagem(texto: respostaChat, deUsuario: false));
@@ -261,8 +274,11 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
               mensagens: _mensagensChat,
               isLoading: _isConversando,
               onEnviar: _enviarMensagemChat,
-              placeholder: 'ex: remova o ator Cliente, adicione um caso de uso de cancelamento...',
-              avisoDesabilitado: _sessionId == null ? 'Gere um diagrama primeiro para poder conversar.' : null,
+              placeholder:
+                  'ex: remova o ator Cliente, adicione um caso de uso de cancelamento...',
+              avisoDesabilitado: _sessionId == null
+                  ? 'Gere um diagrama primeiro para poder conversar.'
+                  : null,
             ),
           ),
         ],
@@ -291,7 +307,10 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
                 child: Text(
                   "A IA gera um diagrama de casos de uso a partir dos requisitos funcionais cadastrados. "
                   "Este passo é só uma visualização - nada aqui é salvo ainda.",
-                  style: TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.w500, fontSize: 12),
+                  style: TextStyle(
+                      color: Color(0xFF1565C0),
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12),
                 ),
               ),
             ],
@@ -306,36 +325,53 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
           decoration: BoxDecoration(
             gradient: _isLoading
                 ? const LinearGradient(colors: [Colors.grey, Colors.blueGrey])
-                : const LinearGradient(colors: [Color(0xFF7B1FA2), Color(0xFF9C27B0)]),
+                : const LinearGradient(
+                    colors: [Color(0xFF7B1FA2), Color(0xFF9C27B0)]),
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               if (!_isLoading)
-                BoxShadow(color: Colors.purple.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2)),
+                BoxShadow(
+                    color: Colors.purple.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2)),
             ],
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: (_isLoading || projetoDraft.requisitos.isEmpty) ? null : _gerarDiagrama,
+              onTap: (_isLoading || projetoDraft.requisitos.isEmpty)
+                  ? null
+                  : _gerarDiagrama,
               borderRadius: BorderRadius.circular(8),
               child: Center(
                 child: _isLoading
                     ? const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                          SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2)),
                           SizedBox(width: 10),
-                          Text("Gerando diagrama...", style: TextStyle(color: Colors.white)),
+                          Text("Gerando diagrama...",
+                              style: TextStyle(color: Colors.white)),
                         ],
                       )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(FontAwesomeIcons.wandMagicSparkles, color: Colors.white, size: 16),
+                          const Icon(FontAwesomeIcons.wandMagicSparkles,
+                              color: Colors.white, size: 16),
                           const SizedBox(width: 8),
                           Text(
-                            jaGerou ? "Gerar novamente" : "Gerar Diagrama com IA",
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            jaGerou
+                                ? "Gerar novamente"
+                                : "Gerar Diagrama com IA",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14),
                           ),
                         ],
                       ),
@@ -360,7 +396,8 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
     }
 
     if (_erro != null) {
-      return _buildEstadoVazio(icon: Icons.error_outline, cor: Colors.red, texto: _erro!);
+      return _buildEstadoVazio(
+          icon: Icons.error_outline, cor: Colors.red, texto: _erro!);
     }
 
     if (projetoDraft.requisitos.isEmpty) {
@@ -377,7 +414,11 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_atores.isNotEmpty) ...[
-            const Text("Atores identificados", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54)),
+            const Text("Atores identificados",
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.black54)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -425,11 +466,13 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                const Icon(Icons.warning_amber_rounded,
+                    color: Colors.orange, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _avisoRenderizacao ?? "Não foi possível renderizar o diagrama visualmente agora.",
+                    _avisoRenderizacao ??
+                        "Não foi possível renderizar o diagrama visualmente agora.",
                     style: const TextStyle(color: Colors.orange, fontSize: 12),
                   ),
                 ),
@@ -440,10 +483,15 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(8)),
             child: SelectableText(
               _mermaidCode!,
-              style: const TextStyle(color: Colors.greenAccent, fontFamily: 'monospace', fontSize: 12),
+              style: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontFamily: 'monospace',
+                  fontSize: 12),
             ),
           ),
         ],
@@ -453,11 +501,13 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
     return _buildEstadoVazio(
       icon: Icons.account_tree_outlined,
       cor: Colors.grey,
-      texto: 'Clique em "Gerar Diagrama com IA" para visualizar os casos de uso deste projeto.',
+      texto:
+          'Clique em "Gerar Diagrama com IA" para visualizar os casos de uso deste projeto.',
     );
   }
 
-  Widget _buildEstadoVazio({required IconData icon, required Color cor, required String texto}) {
+  Widget _buildEstadoVazio(
+      {required IconData icon, required Color cor, required String texto}) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -465,7 +515,9 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
           children: [
             Icon(icon, size: 40, color: cor.withOpacity(0.5)),
             const SizedBox(height: 10),
-            Text(texto, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600])),
+            Text(texto,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600])),
           ],
         ),
       ),
@@ -485,7 +537,11 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
         children: [
           const Icon(Icons.person_outline, size: 14, color: Colors.indigo),
           const SizedBox(width: 4),
-          Text(nome, style: const TextStyle(color: Colors.indigo, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(nome,
+              style: const TextStyle(
+                  color: Colors.indigo,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );

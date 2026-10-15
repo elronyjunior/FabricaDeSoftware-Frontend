@@ -35,7 +35,7 @@ class _ClientesState extends State<Clientes> {
           final enderecosProvider = scaffoldContext.read<EnderecosProvider>();
 
           return Scaffold(
-            drawer: BarraLateral(),
+            drawer: BarraLateral.drawer(context),
             backgroundColor: const Color(0xFFF1F5F9),
             appBar: CustomAppBar(
               title: 'Gestão de Clientes',

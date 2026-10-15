@@ -21,7 +21,7 @@ class _GerenciarEquipesScreenState extends State<GerenciarEquipesScreen> {
       create: (_) => EquipesProvider()..carregarDados(),
       child: Scaffold(
         appBar: CustomAppBar(title: "Gestão de Equipes"),
-        drawer: BarraLateral(),
+        drawer: BarraLateral.drawer(context),
         backgroundColor: Colors.grey[50],
         body: Consumer<EquipesProvider>(
           builder: (context, provider, child) {

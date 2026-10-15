@@ -41,7 +41,7 @@ class _RecursosState extends State<Recursos> {
     
     return Scaffold(
       // Se estiver filtrado, NÃO mostra o menu lateral (Drawer) para não confundir a navegação
-      drawer: isFiltrado ? null : BarraLateral(),
+      drawer: isFiltrado ? null : BarraLateral.drawer(context),
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         backgroundColor: Colors.white,

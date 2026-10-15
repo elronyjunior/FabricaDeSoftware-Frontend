@@ -2,6 +2,7 @@
 import 'package:fabrica_software_app/models/recurso.dart';
 import 'package:fabrica_software_app/models/teste.dart';
 import 'package:fabrica_software_app/models/usuario.dart';
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/providers/recursos_provider.dart';
 import 'package:fabrica_software_app/providers/tecnologias_provider.dart';
 import 'package:fabrica_software_app/screens/Cadastro/Cadastro_screen.dart';
@@ -59,6 +60,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+        navigatorKey: navigatorKey,
+        navigatorObservers: [observadorRotas],
+        // Menu lateral em todas as telas, exceto login e cadastro.
+        builder: (context, child) => LayoutPrincipal(child: child),
         initialRoute: '/',
         routes: {
           '/':(context){return const Loginscreen();},
