@@ -28,7 +28,7 @@ class _TecnologiasState extends State<Tecnologias> {
     final tecnologiasProvider = context.watch<TecnologiasProvider>();
     
     return Scaffold(
-      drawer: BarraLateral(),
+      drawer: BarraLateral.drawer(context),
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: CustomAppBar(
         title: 'Gestão de Tecnologias',

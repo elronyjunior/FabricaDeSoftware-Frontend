@@ -20,7 +20,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
     return ChangeNotifierProvider(
       create: (_) => RelatoriosProvider()..carregarDados(),
       child: Scaffold(
-        drawer: BarraLateral(),
+        drawer: BarraLateral.drawer(context),
         backgroundColor: Colors.grey[50],
         appBar: CustomAppBar(title:"Realtórios Gerais" ),
         body: Consumer<RelatoriosProvider>(

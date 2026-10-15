@@ -3,7 +3,7 @@ import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.da
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
-import 'components.dart'; 
+import 'components.dart';
 import 'package:fabrica_software_app/config/projeto_dto.dart';
 import 'package:fabrica_software_app/services/api_service.dart';
 
@@ -45,7 +45,8 @@ class ConfiguracaoInicialProjetoStep extends ModalStep {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2962FF),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: Row(
@@ -71,34 +72,50 @@ class _ConfiguracaoContent extends StatefulWidget {
 
 class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Inicializamos os controllers já com os dados do DTO para garantir que apareçam
   late TextEditingController _nomeCtrl;
   late TextEditingController _descCtrl;
   late TextEditingController _metodologiaCtrl;
-  
+
   List<dynamic> _listaClientesDB = [];
   List<dynamic> _listaTecnologiasDB = [];
 
   Map<String, dynamic>? _clienteSelecionado;
   List<Map<String, dynamic>> _tecnologiasSelecionadas = [];
-  
+
   String? _tipoSelecionado;
-  final List<String> _opcoesTipo = ['Web', 'Mobile', 'Desktop', 'API', 'Híbrido', 'Outro'];
+  final List<String> _opcoesTipo = [
+    'Web',
+    'Mobile',
+    'Desktop',
+    'API',
+    'Híbrido',
+    'Outro'
+  ];
 
   String? _modeloSelecionado;
-  final List<String> _opcoesModelo = ['SaaS', 'Marketplace', 'E-commerce', 'Institucional', 'Interno', 'Outros'];
+  final List<String> _opcoesModelo = [
+    'SaaS',
+    'Marketplace',
+    'E-commerce',
+    'Institucional',
+    'Interno',
+    'Outros'
+  ];
 
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    
+
     // 1. Vínculo Imediato dos Dados Básicos (Evita delay visual)
     _nomeCtrl = TextEditingController(text: projetoDraft.nome ?? '');
     _descCtrl = TextEditingController(text: projetoDraft.descricao ?? '');
-    _metodologiaCtrl = TextEditingController(text: projetoDraft.metodologia ?? ''); // <--- Aqui garante a Metodologia
+    _metodologiaCtrl = TextEditingController(
+        text:
+            projetoDraft.metodologia ?? ''); // <--- Aqui garante a Metodologia
 
     _carregarDadosAsync();
   }
@@ -114,16 +131,15 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
   Future<void> _carregarDadosAsync() async {
     try {
       // Busca listas gerais
-      final results = await Future.wait([
-        ApiService.getClientes(),
-        ApiService.getTecnologias()
-      ]);
+      final results = await Future.wait(
+          [ApiService.getClientes(), ApiService.getTecnologias()]);
 
       List<int> idsTecnologiasDoProjeto = [];
-      
+
       // Se for EDIÇÃO (tem ID), busca as tecnologias específicas desse projeto no banco
       if (projetoDraft.id != null) {
-        idsTecnologiasDoProjeto = await ApiService.getTecnologiasDoProjeto(projetoDraft.id!);
+        idsTecnologiasDoProjeto =
+            await ApiService.getTecnologiasDoProjeto(projetoDraft.id!);
       }
 
       if (mounted) {
@@ -133,22 +149,24 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
 
           // 2. Configura Dropdowns (Tipo e Modelo)
           if (projetoDraft.tipo != null) {
-             _tipoSelecionado = _encontrarOpcao(projetoDraft.tipo!, _opcoesTipo);
+            _tipoSelecionado = _encontrarOpcao(projetoDraft.tipo!, _opcoesTipo);
           }
           if (projetoDraft.modelo != null) {
-             _modeloSelecionado = _encontrarOpcao(projetoDraft.modelo!, _opcoesModelo);
+            _modeloSelecionado =
+                _encontrarOpcao(projetoDraft.modelo!, _opcoesModelo);
           }
 
           // 3. Configura Cliente
-          if (projetoDraft.cliente != null && projetoDraft.cliente!['id'] != null) {
+          if (projetoDraft.cliente != null &&
+              projetoDraft.cliente!['id'] != null) {
             try {
               final idDraft = projetoDraft.cliente!['id'].toString();
               _clienteSelecionado = _listaClientesDB.firstWhere(
-                (c) => c['id'].toString() == idDraft,
-                orElse: () => null
-              );
+                  (c) => c['id'].toString() == idDraft,
+                  orElse: () => null);
               // Atualiza o DTO para garantir consistência
-              if (_clienteSelecionado != null) projetoDraft.cliente = _clienteSelecionado;
+              if (_clienteSelecionado != null)
+                projetoDraft.cliente = _clienteSelecionado;
             } catch (_) {}
           }
 
@@ -159,15 +177,15 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
                 .where((tech) => idsTecnologiasDoProjeto.contains(tech['id']))
                 .map((e) => Map<String, dynamic>.from(e)) // Cria cópia segura
                 .toList();
-            
+
             // Salva no DTO para persistir
             projetoDraft.tecnologias = _tecnologiasSelecionadas;
-          } 
+          }
           // Se for CRIAÇÃO ou já tiver tecnologias no draft (navegação entre abas)
           else if (projetoDraft.tecnologias.isNotEmpty) {
             _tecnologiasSelecionadas = List.from(projetoDraft.tecnologias);
           }
-          
+
           _isLoading = false;
         });
       }
@@ -179,11 +197,11 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
 
   String? _encontrarOpcao(String valor, List<String> lista) {
     try {
-      return lista.firstWhere(
-        (e) => e.toUpperCase() == valor.toUpperCase(),
-        orElse: () => lista.first
-      );
-    } catch (_) { return null; }
+      return lista.firstWhere((e) => e.toUpperCase() == valor.toUpperCase(),
+          orElse: () => lista.first);
+    } catch (_) {
+      return null;
+    }
   }
 
   bool validar() {
@@ -201,14 +219,14 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
     }
     // Salvamento final
     projetoDraft.nome = _nomeCtrl.text;
-    projetoDraft.metodologia = _metodologiaCtrl.text; // Garante salvar metodologia
+    projetoDraft.metodologia =
+        _metodologiaCtrl.text; // Garante salvar metodologia
     return true;
   }
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red)
-    );
+        SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   void _abrirSelecaoTecnologias() {
@@ -219,34 +237,37 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
           title: const Text("Selecionar Tecnologias"),
           content: SizedBox(
             width: double.maxFinite,
-            child: _listaTecnologiasDB.isEmpty 
-              ? const Text("Nenhuma tecnologia cadastrada.")
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _listaTecnologiasDB.length,
-                  itemBuilder: (ctx, i) {
-                    final tech = _listaTecnologiasDB[i];
-                    final isSelected = _tecnologiasSelecionadas.any((t) => t['id'] == tech['id']);
-                    
-                    return CheckboxListTile(
-                      title: Text(tech['nome']),
-                      value: isSelected,
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            if (!_tecnologiasSelecionadas.any((t) => t['id'] == tech['id'])) {
-                              _tecnologiasSelecionadas.add(tech);
+            child: _listaTecnologiasDB.isEmpty
+                ? const Text("Nenhuma tecnologia cadastrada.")
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _listaTecnologiasDB.length,
+                    itemBuilder: (ctx, i) {
+                      final tech = _listaTecnologiasDB[i];
+                      final isSelected = _tecnologiasSelecionadas
+                          .any((t) => t['id'] == tech['id']);
+
+                      return CheckboxListTile(
+                        title: Text(tech['nome']),
+                        value: isSelected,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              if (!_tecnologiasSelecionadas
+                                  .any((t) => t['id'] == tech['id'])) {
+                                _tecnologiasSelecionadas.add(tech);
+                              }
+                            } else {
+                              _tecnologiasSelecionadas
+                                  .removeWhere((t) => t['id'] == tech['id']);
                             }
-                          } else {
-                            _tecnologiasSelecionadas.removeWhere((t) => t['id'] == tech['id']);
-                          }
-                          projetoDraft.tecnologias = _tecnologiasSelecionadas;
-                        });
-                        (ctx as Element).markNeedsBuild();
-                      },
-                    );
-                  },
-                ),
+                            projetoDraft.tecnologias = _tecnologiasSelecionadas;
+                          });
+                          (ctx as Element).markNeedsBuild();
+                        },
+                      );
+                    },
+                  ),
           ),
           actions: [
             TextButton(
@@ -271,24 +292,30 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
           // ... (Header visual igual)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+                color: const Color(0xFFE3F2FD),
+                borderRadius: BorderRadius.circular(8)),
             child: Row(
               children: const [
                 Icon(Icons.info_outline, color: Color(0xFF2962FF), size: 20),
                 SizedBox(width: 10),
-                Text("Informações Gerais", style: TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.w500)),
+                Text("Informações Gerais",
+                    style: TextStyle(
+                        color: Color(0xFF1565C0), fontWeight: FontWeight.w500)),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
           // 1. NOME
-          ComponentsConfiguracaoInicalProjeto.buildLabel("Nome do projeto", isRequired: true),
+          ComponentsConfiguracaoInicalProjeto.buildLabel("Nome do projeto",
+              isRequired: true),
           Container(
             decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
             child: TextFormField(
               controller: _nomeCtrl,
-              decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration("Ex: Sistema de Gestão ERP"),
+              decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration(
+                  "Ex: Sistema de Gestão ERP"),
               onChanged: (val) => projetoDraft.nome = val,
             ),
           ),
@@ -301,16 +328,23 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ComponentsConfiguracaoInicalProjeto.buildLabel("Tipo", isRequired: true),
+                    ComponentsConfiguracaoInicalProjeto.buildLabel("Tipo",
+                        isRequired: true),
                     Container(
-                      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
+                      decoration: ComponentsConfiguracaoInicalProjeto
+                          .inputBoxDecoration,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          hint: const Text("Selecione", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          hint: const Text("Selecione",
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 13)),
                           value: _tipoSelecionado,
                           isExpanded: true,
-                          items: _opcoesTipo.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                          items: _opcoesTipo
+                              .map((t) =>
+                                  DropdownMenuItem(value: t, child: Text(t)))
+                              .toList(),
                           onChanged: (val) {
                             setState(() {
                               _tipoSelecionado = val;
@@ -328,16 +362,23 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ComponentsConfiguracaoInicalProjeto.buildLabel("Modelo", isRequired: true),
+                    ComponentsConfiguracaoInicalProjeto.buildLabel("Modelo",
+                        isRequired: true),
                     Container(
-                      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
+                      decoration: ComponentsConfiguracaoInicalProjeto
+                          .inputBoxDecoration,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          hint: const Text("Selecione", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          hint: const Text("Selecione",
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 13)),
                           value: _modeloSelecionado,
                           isExpanded: true,
-                          items: _opcoesModelo.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                          items: _opcoesModelo
+                              .map((m) =>
+                                  DropdownMenuItem(value: m, child: Text(m)))
+                              .toList(),
                           onChanged: (val) {
                             setState(() {
                               _modeloSelecionado = val;
@@ -352,7 +393,7 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16),
 
           // 3. DESCRIÇÃO
@@ -362,7 +403,8 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
             child: TextFormField(
               controller: _descCtrl,
               maxLines: 4,
-              decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration("Descreva o objetivo..."),
+              decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration(
+                  "Descreva o objetivo..."),
               onChanged: (val) => projetoDraft.descricao = val,
             ),
           ),
@@ -375,19 +417,24 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ComponentsConfiguracaoInicalProjeto.buildLabel("Cliente", isRequired: true),
+                    ComponentsConfiguracaoInicalProjeto.buildLabel("Cliente",
+                        isRequired: true),
                     Container(
-                      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
+                      decoration: ComponentsConfiguracaoInicalProjeto
+                          .inputBoxDecoration,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<dynamic>(
-                          hint: const Text("Selecione...", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          hint: const Text("Selecione...",
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 13)),
                           value: _clienteSelecionado,
                           isExpanded: true,
                           items: _listaClientesDB.map((c) {
                             return DropdownMenuItem<dynamic>(
-                              value: c, 
-                              child: Text(c['razao_social'] ?? 'Sem Nome', overflow: TextOverflow.ellipsis),
+                              value: c,
+                              child: Text(c['razao_social'] ?? 'Sem Nome',
+                                  overflow: TextOverflow.ellipsis),
                             );
                           }).toList(),
                           onChanged: (val) {
@@ -407,12 +454,16 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ComponentsConfiguracaoInicalProjeto.buildLabel("Metodologia"),
+                    ComponentsConfiguracaoInicalProjeto.buildLabel(
+                        "Metodologia"),
                     Container(
-                      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
+                      decoration: ComponentsConfiguracaoInicalProjeto
+                          .inputBoxDecoration,
                       child: TextFormField(
                         controller: _metodologiaCtrl,
-                        decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration("Ex: Scrum"),
+                        decoration:
+                            ComponentsConfiguracaoInicalProjeto.inputDecoration(
+                                "Ex: Scrum"),
                         onChanged: (val) => projetoDraft.metodologia = val,
                       ),
                     )
@@ -424,30 +475,40 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
           const SizedBox(height: 16),
 
           // 5. TECNOLOGIAS (Multi-Select)
-          ComponentsConfiguracaoInicalProjeto.buildLabel("Tecnologias Utilizadas", isRequired: true),
+          ComponentsConfiguracaoInicalProjeto.buildLabel(
+              "Tecnologias Utilizadas",
+              isRequired: true),
           GestureDetector(
             onTap: _abrirSelecaoTecnologias,
             child: Container(
               constraints: const BoxConstraints(minHeight: 50),
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
+              decoration:
+                  ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
               child: _tecnologiasSelecionadas.isEmpty
-                  ? const Text("Toque para selecionar...", style: TextStyle(color: Colors.grey, fontSize: 13))
+                  ? const Text("Toque para selecionar...",
+                      style: TextStyle(color: Colors.grey, fontSize: 13))
                   : Wrap(
                       spacing: 8,
                       runSpacing: 4,
-                      children: _tecnologiasSelecionadas.map((t) => Chip(
-                        label: Text(t['nome'], style: const TextStyle(fontSize: 11)),
-                        backgroundColor: Colors.blue[50],
-                        deleteIcon: const Icon(Icons.close, size: 12, color: Colors.blue),
-                        onDeleted: () {
-                           setState(() {
-                             _tecnologiasSelecionadas.removeWhere((item) => item['id'] == t['id']);
-                             projetoDraft.tecnologias = _tecnologiasSelecionadas;
-                           });
-                        },
-                      )).toList(),
+                      children: _tecnologiasSelecionadas
+                          .map((t) => Chip(
+                                label: Text(t['nome'],
+                                    style: const TextStyle(fontSize: 11)),
+                                backgroundColor: Colors.blue[50],
+                                deleteIcon: const Icon(Icons.close,
+                                    size: 12, color: Colors.blue),
+                                onDeleted: () {
+                                  setState(() {
+                                    _tecnologiasSelecionadas.removeWhere(
+                                        (item) => item['id'] == t['id']);
+                                    projetoDraft.tecnologias =
+                                        _tecnologiasSelecionadas;
+                                  });
+                                },
+                              ))
+                          .toList(),
                     ),
             ),
           ),

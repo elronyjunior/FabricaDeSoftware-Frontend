@@ -44,7 +44,8 @@ class _ChatIAPanelState extends State<ChatIAPanel> {
   @override
   void didUpdateWidget(covariant ChatIAPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.mensagens.length != oldWidget.mensagens.length || widget.isLoading != oldWidget.isLoading) {
+    if (widget.mensagens.length != oldWidget.mensagens.length ||
+        widget.isLoading != oldWidget.isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollParaFinal());
     }
   }
@@ -89,14 +90,18 @@ class _ChatIAPanelState extends State<ChatIAPanel> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.deepPurple.withOpacity(0.06),
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+              borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12), topRight: Radius.circular(12)),
               border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             child: const Row(
               children: [
-                Icon(Icons.smart_toy_outlined, size: 18, color: Colors.deepPurple),
+                Icon(Icons.smart_toy_outlined,
+                    size: 18, color: Colors.deepPurple),
                 SizedBox(width: 8),
-                Text("Assistente IA", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text("Assistente IA",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               ],
             ),
           ),
@@ -106,7 +111,9 @@ class _ChatIAPanelState extends State<ChatIAPanel> {
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Text(
-                        desabilitado ? widget.avisoDesabilitado! : widget.placeholder,
+                        desabilitado
+                            ? widget.avisoDesabilitado!
+                            : widget.placeholder,
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey[500], fontSize: 12),
                       ),
@@ -115,7 +122,8 @@ class _ChatIAPanelState extends State<ChatIAPanel> {
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(12),
-                    itemCount: widget.mensagens.length + (widget.isLoading ? 1 : 0),
+                    itemCount:
+                        widget.mensagens.length + (widget.isLoading ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index == widget.mensagens.length) {
                         return _buildBolhaDigitando();
@@ -126,7 +134,8 @@ class _ChatIAPanelState extends State<ChatIAPanel> {
           ),
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade200))),
+            decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey.shade200))),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -138,29 +147,43 @@ class _ChatIAPanelState extends State<ChatIAPanel> {
                     maxLines: 4,
                     onSubmitted: (_) => _enviar(),
                     decoration: InputDecoration(
-                      hintText: desabilitado ? widget.avisoDesabilitado : widget.placeholder,
-                      hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+                      hintText: desabilitado
+                          ? widget.avisoDesabilitado
+                          : widget.placeholder,
+                      hintStyle:
+                          const TextStyle(fontSize: 12, color: Colors.grey),
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       filled: true,
                       fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                      disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade200)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300)),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300)),
+                      disabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade200)),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  onPressed: (widget.isLoading || desabilitado) ? null : _enviar,
+                  onPressed:
+                      (widget.isLoading || desabilitado) ? null : _enviar,
                   icon: widget.isLoading
                       ? const SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.send, size: 18),
-                  style: IconButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white),
+                  style: IconButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white),
                 ),
               ],
             ),
@@ -184,9 +207,11 @@ class _ChatIAPanelState extends State<ChatIAPanel> {
           decoration: BoxDecoration(
             color: cor,
             borderRadius: BorderRadius.circular(12),
-            border: msg.deUsuario ? null : Border.all(color: Colors.grey.shade200),
+            border:
+                msg.deUsuario ? null : Border.all(color: Colors.grey.shade200),
           ),
-          child: Text(msg.texto, style: TextStyle(color: corTexto, fontSize: 13)),
+          child:
+              Text(msg.texto, style: TextStyle(color: corTexto, fontSize: 13)),
         ),
       ),
     );
@@ -232,7 +257,8 @@ class _Pontinho extends StatelessWidget {
     return Container(
       width: 6,
       height: 6,
-      decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
+      decoration:
+          const BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
     );
   }
 }

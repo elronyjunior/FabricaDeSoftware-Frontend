@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
-import '../Gerenciar_Projetos/Gerenciar_projetos.dart';
 
 class Loginscreen extends StatefulWidget {
   const Loginscreen({super.key});
@@ -33,10 +32,8 @@ class _LoginscreenState extends State<Loginscreen> {
       if (!mounted) return;
 
       if (success) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const GerenciarProjetos()),
-        );
+        Navigator.pushNamedAndRemoveUntil(
+            context, '/Gerenciar_Projetos', (_) => false);
       } else {
         _mostrarErro(auth.error ?? mensagemFalha);
       }

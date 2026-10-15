@@ -88,6 +88,33 @@ class ProjetoDTO {
     }
   }
 
+  /// Corpo enviado a `ApiService.criarProjetoCompleto` ao concluir a criação.
+  /// Usado pelo wizard clássico e pelo formulário conversacional.
+  Map<String, dynamic> montarPayloadCriacao(int usuarioLogadoId) => {
+        "nome_projeto": nome,
+        "descricao": descricao,
+        "modelo_projeto": modelo,
+        "tipo": tipo,
+        "escopo": escopo,
+        "complexidade": complexidade,
+        "cliente_id": cliente?['id'],
+        "metodologia": metodologia,
+        "data_inicio": dataInicio?.toIso8601String(),
+        "data_final_previsto": dataFinalPrevista?.toIso8601String(),
+        "orcamento_estimado": orcamentoEstimado,
+        "criado_por_id": usuarioLogadoId,
+        "responsavel_id":
+            responsavel != null ? responsavel!['id'] : usuarioLogadoId,
+        "tecnologias": tecnologias.map((t) => t['id']).toList(),
+        "equipe": equipe,
+        "recursos": recursos.map((r) => r['id']).toList(),
+        "requisitos": requisitos.toList(),
+        "diagrama_caso_uso_titulo": diagramaCasoUsoTitulo,
+        "diagrama_caso_uso_mermaid": diagramaCasoUsoMermaid,
+        "diagrama_caso_uso_imagem_base64": diagramaCasoUsoImagemBase64,
+        "diagrama_caso_uso_atores": diagramaCasoUsoAtores,
+      };
+
   String? _normalizarOpcao(String? valorBanco, List<String> opcoesDropdown) {
     if (valorBanco == null) return null;
     try {

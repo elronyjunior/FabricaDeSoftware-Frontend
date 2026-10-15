@@ -5,21 +5,21 @@ class NivelIcon extends StatelessWidget {
   final String nivel;
   final Color? color;
   final double? size;
-  const NivelIcon({super.key, required this.nivel, this.color,this.size});
+  const NivelIcon({super.key, required this.nivel, this.color, this.size});
 
   @override
   Widget build(BuildContext context) {
-    late IconData icon=FontAwesomeIcons.x;
-    if(nivel.toUpperCase()=='MASTER'){
-      icon=FontAwesomeIcons.dragon;
+    late IconData icon = FontAwesomeIcons.x;
+    if (nivel.toUpperCase() == 'MASTER') {
+      icon = FontAwesomeIcons.dragon;
     }
-    if(nivel.toUpperCase()=='ADMINISTRADOR'){
-      icon=FontAwesomeIcons.userTie;
+    if (nivel.toUpperCase() == 'ADMINISTRADOR') {
+      icon = FontAwesomeIcons.userTie;
     }
-    if(nivel.toUpperCase()=='USUARIO'){
-      icon=FontAwesomeIcons.solidUser;
+    if (nivel.toUpperCase() == 'USUARIO') {
+      icon = FontAwesomeIcons.solidUser;
     }
 
-    return FaIcon(icon,color: color,size: size) ;
+    return FaIcon(icon, color: color, size: size);
   }
 }

@@ -51,32 +51,40 @@ class _EdicaoFooterState extends State<_EdicaoFooter> {
         'escopo': projetoDraft.escopo, // Mantém o que veio do loadFromModel
         'complexidade': projetoDraft.complexidade, // Mantém
         'orcamento_estimado': projetoDraft.orcamentoEstimado, // Mantém
-        
+
         // Datas importantes (envia null se não tiver data, mas se tiver, envia formatado)
         'data_inicio': projetoDraft.dataInicio?.toIso8601String(),
-        'data_final_previsto': projetoDraft.dataFinalPrevista?.toIso8601String(),
-        
+        'data_final_previsto':
+            projetoDraft.dataFinalPrevista?.toIso8601String(),
+
         // ID do cliente (obrigatório)
-        'cliente_id': projetoDraft.cliente != null ? projetoDraft.cliente!['id'] : null,
+        'cliente_id':
+            projetoDraft.cliente != null ? projetoDraft.cliente!['id'] : null,
       };
 
       if (projetoDraft.id != null) {
-        await ProjetosService.instance.atualizarProjeto(projetoDraft.id!, dados);
+        await ProjetosService.instance
+            .atualizarProjeto(projetoDraft.id!, dados);
       }
 
       if (mounted) {
-        context.read<ProjetosProvider>().carregarProjetos(); // Atualiza a lista na tela
+        context
+            .read<ProjetosProvider>()
+            .carregarProjetos(); // Atualiza a lista na tela
         Navigator.pop(context); // Fecha o modal
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Projeto atualizado!'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('Projeto atualizado!'),
+              backgroundColor: Colors.green),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erro ao editar: $e"), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text("Erro ao editar: $e"), backgroundColor: Colors.red),
         );
       }
     }
@@ -100,11 +108,16 @@ class _EdicaoFooterState extends State<_EdicaoFooter> {
               backgroundColor: Colors.blueAccent,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            icon: _isSaving 
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : const Icon(Icons.check, size: 18),
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.check, size: 18),
             label: Text(_isSaving ? 'Salvando...' : 'Salvar Alterações'),
           ),
         ],

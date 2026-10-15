@@ -4,7 +4,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 class ModalDeCriacao extends StatelessWidget {
-
   const ModalDeCriacao({
     super.key,
   });
@@ -54,33 +53,34 @@ class ModalDeCriacao extends StatelessWidget {
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: FaIcon(provider.returnIcon(), color: Colors.white),
+                        child:
+                            FaIcon(provider.returnIcon(), color: Colors.white),
                       ),
                       const SizedBox(width: 12),
-                      
+
                       // Título
                       Expanded(
                         child: Text(
                           provider.returnTitle(),
                           style: const TextStyle(
-                            fontSize: 15, 
-                            fontWeight: FontWeight.bold
-                          ),
+                              fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      
+
                       // Navegação
                       IconButton(
-                        onPressed: () {provider.previousIndex();}, 
-                        icon: const FaIcon(FontAwesomeIcons.caretLeft)
-                      ),
+                          onPressed: () {
+                            provider.previousIndex();
+                          },
+                          icon: const FaIcon(FontAwesomeIcons.caretLeft)),
                       Text(provider.returnTabName()),
                       IconButton(
-                        onPressed: () {provider.nextIndex();}, 
-                        icon: const FaIcon(FontAwesomeIcons.caretRight)
-                      ),
+                          onPressed: () {
+                            provider.nextIndex();
+                          },
+                          icon: const FaIcon(FontAwesomeIcons.caretRight)),
                       const SizedBox(width: 20),
-                      
+
                       // Botão Fechar
                       IconButton(
                         iconSize: 20, // Ajustei levemente para padronizar
@@ -91,7 +91,7 @@ class ModalDeCriacao extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Texto de Progresso
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -101,18 +101,19 @@ class ModalDeCriacao extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       Text(
-                        '${provider.returnPercentNumber()*100}%',
+                        '${provider.returnPercentNumber() * 100}%',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  
+
                   // Barra de Progresso
                   LinearProgressIndicator(
                     value: provider.returnPercentNumber(),
                     backgroundColor: Colors.grey[200],
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Colors.blue),
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ],

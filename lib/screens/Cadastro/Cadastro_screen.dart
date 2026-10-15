@@ -1,4 +1,3 @@
-import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Gerenciar_projetos.dart';
 import 'package:fabrica_software_app/screens/Login/Components/auth_components.dart';
 import 'package:fabrica_software_app/screens/Login/Styles/style_login.dart';
 import 'package:flutter/material.dart';
@@ -34,10 +33,8 @@ class _CadastroScreenState extends State<CadastroScreen> {
       if (!mounted) return;
 
       if (success) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const GerenciarProjetos()),
-        );
+        Navigator.pushNamedAndRemoveUntil(
+            context, '/Gerenciar_Projetos', (_) => false);
       } else {
         _mostrarErro(auth.error ?? mensagemFalha);
       }
