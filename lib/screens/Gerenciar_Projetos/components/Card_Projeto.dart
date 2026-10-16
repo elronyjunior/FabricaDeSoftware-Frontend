@@ -152,23 +152,35 @@ class _ProjectCardState extends State<ProjectCard> {
                         // Projeto tiver a lista de membros.
                         const _Avatares(fotos: [], total: 0),
                         const Spacer(),
-                        if (_hover) ...[
-                          _Acao(
-                            icone: Icons.edit,
-                            dica: 'Editar',
-                            cor: StyleProjetos.azulEscuro,
-                            onTap: _editar,
-                          ),
-                          const SizedBox(width: 6),
-                          _Acao(
-                            icone: Icons.delete,
-                            dica: 'Excluir',
-                            cor: Colors.red.shade400,
-                            onTap: _excluir,
-                          ),
-                        ] else
-                          Text(_tipo.toUpperCase(),
-                              style: StyleProjetos.cardRodape),
+                        // No hover, o tipo dá lugar às ações (com fade).
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 160),
+                          child: _hover
+                              ? Row(
+                                  key: const ValueKey('acoes'),
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _Acao(
+                                      icone: Icons.edit_outlined,
+                                      dica: 'Editar',
+                                      cor: StyleProjetos.azulEscuro,
+                                      onTap: _editar,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _Acao(
+                                      icone: Icons.delete_outline,
+                                      dica: 'Excluir',
+                                      cor: _vermelho,
+                                      onTap: _excluir,
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  _tipo.toUpperCase(),
+                                  key: const ValueKey('tipo'),
+                                  style: StyleProjetos.cardRodape,
+                                ),
+                        ),
                       ],
                     ),
                   ),
@@ -273,7 +285,13 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-class _Acao extends StatelessWidget {
+/// Vermelho da IDV (o mesmo da etiqueta "Atrasado").
+const _vermelho = Color(0xFFD62A1E);
+
+/// Ação do card no estilo da IDV: botão redondo de vidro claro (como os
+/// cards e o menu), ícone na cor da ação; ao passar o mouse, preenche com a
+/// cor e o ícone fica branco.
+class _Acao extends StatefulWidget {
   const _Acao({
     required this.icone,
     required this.dica,
@@ -287,19 +305,47 @@ class _Acao extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_Acao> createState() => _AcaoState();
+}
+
+class _AcaoState extends State<_Acao> {
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: dica,
-      child: Material(
-        color: Colors.white,
-        shape: const CircleBorder(),
-        elevation: 1,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Icon(icone, size: 16, color: cor),
+      message: widget.dica,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _hover ? widget.cor : Colors.white.withOpacity(0.75),
+              border: Border.all(
+                color: _hover ? widget.cor : widget.cor.withOpacity(0.25),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: (_hover ? widget.cor : const Color(0xFF1C1F3A))
+                      .withOpacity(_hover ? 0.3 : 0.08),
+                  blurRadius: _hover ? 10 : 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(
+              widget.icone,
+              size: 17,
+              color: _hover ? Colors.white : widget.cor,
+            ),
           ),
         ),
       ),
