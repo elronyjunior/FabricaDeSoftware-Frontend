@@ -7,7 +7,8 @@ import 'package:provider/provider.dart';
 
 typedef FiltrosProjeto = ({String tipo, String status, String cliente});
 
-const FiltrosProjeto _semFiltros = (tipo: 'Todos', status: 'Todos', cliente: '');
+const FiltrosProjeto _semFiltros =
+    (tipo: 'Todos', status: 'Todos', cliente: '');
 
 // Os mesmos status que o card calcula (Projeto.statusCalculado).
 const _opcoesStatus = ['Todos', 'Em processo', 'Concluído', 'Atrasado'];
@@ -126,7 +127,8 @@ class _DialogFiltrosState extends State<_DialogFiltros> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: StyleProjetos.laranja, width: 1.5),
+          borderSide:
+              const BorderSide(color: StyleProjetos.laranja, width: 1.5),
         ),
       );
 
@@ -188,7 +190,8 @@ class _DialogFiltrosState extends State<_DialogFiltros> {
             ),
             const SizedBox(height: 16),
             _rotulo('Status'),
-            _dropdown(_opcoesStatus, _status, (v) => setState(() => _status = v)),
+            _dropdown(
+                _opcoesStatus, _status, (v) => setState(() => _status = v)),
             const SizedBox(height: 16),
             _rotulo('Cliente'),
             TextField(
@@ -217,8 +220,8 @@ class _DialogFiltrosState extends State<_DialogFiltros> {
             backgroundColor: StyleProjetos.laranja,
             foregroundColor: Colors.white,
             elevation: 0,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: const Text('Aplicar'),
         ),
@@ -267,8 +270,7 @@ class _CampoPesquisaState extends State<CampoPesquisa> {
         height: StyleProjetos.controleAltura,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(StyleProjetos.controleAltura / 2),
+          borderRadius: BorderRadius.circular(StyleProjetos.controleAltura / 2),
           border: Border.all(
             color: focado ? StyleProjetos.laranja : StyleProjetos.azulEscuro,
             width: focado ? 1.5 : 1,
@@ -276,8 +278,7 @@ class _CampoPesquisaState extends State<CampoPesquisa> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.search,
-                size: 18, color: StyleProjetos.azulEscuro),
+            const Icon(Icons.search, size: 18, color: StyleProjetos.azulEscuro),
             const SizedBox(width: 8),
             Expanded(
               // `expands` faz o campo ocupar toda a altura da pílula e

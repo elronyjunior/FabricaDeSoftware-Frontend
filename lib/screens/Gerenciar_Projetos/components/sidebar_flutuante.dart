@@ -71,8 +71,7 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
     _controle.reverse();
   }
 
-  void _alternar() =>
-      _controle.value > 0.5 ? _fechar() : _controle.forward();
+  void _alternar() => _controle.value > 0.5 ? _fechar() : _controle.forward();
 
   /// Fecha o menu e executa a ação do item tocado.
   void _executar(VoidCallback? acao) {
