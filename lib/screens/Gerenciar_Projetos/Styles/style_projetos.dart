@@ -45,6 +45,7 @@ class StyleProjetos {
   static const double sidebarRaio = 45;
   static const double sidebarAbertaLargura = 400;
   static const double sidebarAbertaRaio = 28;
+
   /// Tom do vidro fumê do menu aberto (a opacidade é aplicada no menu).
   static const Color vidroEscuro = Color(0xFF2B2B36);
   static const double cardAltura = 214;
@@ -61,20 +62,23 @@ class StyleProjetos {
         letterSpacing: -0.3,
       );
 
-  static TextStyle get subtitulo =>
-      GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, color: texto);
+  static TextStyle get subtitulo => GoogleFonts.inter(
+      fontSize: 17, fontWeight: FontWeight.w600, color: texto);
 
   static TextStyle get botao => GoogleFonts.inter(
       fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white);
 
-  static TextStyle get controle => GoogleFonts.inter(fontSize: 15, color: texto);
+  static TextStyle get controle =>
+      GoogleFonts.inter(fontSize: 15, color: texto);
 
-  static TextStyle get contador => GoogleFonts.inter(fontSize: 14, color: texto);
+  static TextStyle get contador =>
+      GoogleFonts.inter(fontSize: 14, color: texto);
 
-  static TextStyle get pesquisa => GoogleFonts.inter(fontSize: 14, color: texto);
+  static TextStyle get pesquisa =>
+      GoogleFonts.inter(fontSize: 14, color: texto);
 
-  static TextStyle get cardTitulo =>
-      GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: texto);
+  static TextStyle get cardTitulo => GoogleFonts.inter(
+      fontSize: 16, fontWeight: FontWeight.w600, color: texto);
 
   static TextStyle get cardCliente =>
       GoogleFonts.inter(fontSize: 14, color: textoSecundario);
@@ -88,7 +92,8 @@ class StyleProjetos {
   static TextStyle get pill =>
       GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600);
 
-  static TextStyle get paginacao => GoogleFonts.inter(fontSize: 18, color: texto);
+  static TextStyle get paginacao =>
+      GoogleFonts.inter(fontSize: 18, color: texto);
 }
 
 /// Cor e gradiente da etiqueta de status de cada projeto.

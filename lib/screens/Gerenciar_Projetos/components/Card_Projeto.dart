@@ -6,11 +6,16 @@ import 'package:fabrica_software_app/providers/projetos_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/components/visualizador_Projetos_Screen.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 class ProjectCard extends StatefulWidget {
-  const ProjectCard({super.key, required this.projeto});
+  const ProjectCard({super.key, required this.projeto, this.aoPassarMouse});
   final Projeto projeto;
+
+  /// Avisa a grade quando o mouse entra/sai, para ela desenhar este card por
+  /// cima dos vizinhos enquanto ele está ampliado.
+  final ValueChanged<bool>? aoPassarMouse;
 
   @override
   State<ProjectCard> createState() => _ProjectCardState();
@@ -18,6 +23,7 @@ class ProjectCard extends StatefulWidget {
 
 class _ProjectCardState extends State<ProjectCard> {
   bool _hover = false;
+  bool _pressionado = false;
 
   String get _tipo {
     final tipo = (widget.projeto.tipo ?? '').trim();
@@ -37,11 +43,19 @@ class _ProjectCardState extends State<ProjectCard> {
     return Icons.folder_open;
   }
 
+  /// Abre o projeto com uma transição simples: a tela aparece em fade.
   void _abrir() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => VisualizarProjetoScreen(projeto: widget.projeto),
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 220),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (_, __, ___) =>
+            VisualizarProjetoScreen(projeto: widget.projeto),
+        transitionsBuilder: (_, animacao, __, tela) => FadeTransition(
+          opacity: CurvedAnimation(parent: animacao, curve: Curves.easeOut),
+          child: tela,
+        ),
       ),
     );
   }
@@ -88,103 +102,125 @@ class _ProjectCardState extends State<ProjectCard> {
   Widget build(BuildContext context) {
     final p = widget.projeto;
 
+    // Hover: o card só cresce. A cor e a sombra continuam iguais (o fundo é
+    // translúcido, então uma sombra mais forte o deixaria mais escuro).
     return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: Container(
-        decoration: StyleProjetos.superficie(),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(StyleProjetos.cardRaio),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: _abrir,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 25, 25, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Cabeçalho: ícone, nome/cliente e status
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _IconeTipo(icone: _icone),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 2),
-                            Text(
-                              p.nomeProjeto,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: StyleProjetos.cardTitulo,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              p.clienteNome ?? 'Cliente não informado',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: StyleProjetos.cardCliente,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _PillStatus(status: p.statusCalculado),
-                    ],
-                  ),
-                  const SizedBox(height: 19),
-                  Text(
-                    p.descricao ?? 'Sem descrição',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: StyleProjetos.cardDescricao,
-                  ),
-                  const Spacer(),
-                  // Rodapé: equipe e tipo (ou ações no hover)
-                  SizedBox(
-                    height: 30,
-                    child: Row(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) {
+        setState(() => _hover = true);
+        widget.aoPassarMouse?.call(true);
+      },
+      onExit: (_) {
+        setState(() => _hover = false);
+        widget.aoPassarMouse?.call(false);
+      },
+      // Clique: o card afunda um pouco enquanto está pressionado (no lugar
+      // da onda do Material).
+      child: AnimatedScale(
+        scale: _pressionado ? 1.02 : (_hover ? 1.06 : 1),
+        duration: Duration(milliseconds: _pressionado ? 90 : 220),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          decoration: StyleProjetos.superficie(),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(StyleProjetos.cardRaio),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: _abrir,
+              onHighlightChanged: (v) => setState(() => _pressionado = v),
+              // Sem véu nem onda do Material no hover e no clique.
+              hoverColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              splashColor: Colors.transparent,
+              splashFactory: NoSplash.splashFactory,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 25, 25, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Cabeçalho: ícone, nome/cliente e status
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // TODO: passar as fotos da equipe quando o modelo
-                        // Projeto tiver a lista de membros.
-                        const _Avatares(fotos: [], total: 0),
-                        const Spacer(),
-                        // No hover, o tipo dá lugar às ações (com fade).
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 160),
-                          child: _hover
-                              ? Row(
-                                  key: const ValueKey('acoes'),
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _Acao(
-                                      icone: Icons.edit_outlined,
-                                      dica: 'Editar',
-                                      cor: StyleProjetos.azulEscuro,
-                                      onTap: _editar,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _Acao(
-                                      icone: Icons.delete_outline,
-                                      dica: 'Excluir',
-                                      cor: _vermelho,
-                                      onTap: _excluir,
-                                    ),
-                                  ],
-                                )
-                              : Text(
-                                  _tipo.toUpperCase(),
-                                  key: const ValueKey('tipo'),
-                                  style: StyleProjetos.cardRodape,
-                                ),
+                        _IconeTipo(icone: _icone),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 2),
+                              Text(
+                                p.nomeProjeto,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: StyleProjetos.cardTitulo,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                p.clienteNome ?? 'Cliente não informado',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: StyleProjetos.cardCliente,
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
+                        _PillStatus(status: p.statusCalculado),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 19),
+                    Text(
+                      p.descricao ?? 'Sem descrição',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: StyleProjetos.cardDescricao,
+                    ),
+                    const Spacer(),
+                    // Rodapé: equipe e tipo (ou ações no hover)
+                    SizedBox(
+                      height: 30,
+                      child: Row(
+                        children: [
+                          // TODO: passar as fotos da equipe quando o modelo
+                          // Projeto tiver a lista de membros.
+                          const _Avatares(fotos: [], total: 0),
+                          const Spacer(),
+                          // No hover, o tipo dá lugar às ações (com fade).
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 160),
+                            child: _hover
+                                ? Row(
+                                    key: const ValueKey('acoes'),
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _Acao(
+                                        icone: FontAwesomeIcons.penToSquare,
+                                        dica: 'Editar',
+                                        cor: StyleProjetos.azulEscuro,
+                                        onTap: _editar,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _Acao(
+                                        icone: FontAwesomeIcons.trashCan,
+                                        dica: 'Excluir',
+                                        cor: _vermelho,
+                                        onTap: _excluir,
+                                      ),
+                                    ],
+                                  )
+                                : Text(
+                                    _tipo.toUpperCase(),
+                                    key: const ValueKey('tipo'),
+                                    style: StyleProjetos.cardRodape,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -288,9 +324,8 @@ class _Avatar extends StatelessWidget {
 /// Vermelho da IDV (o mesmo da etiqueta "Atrasado").
 const _vermelho = Color(0xFFD62A1E);
 
-/// Ação do card no estilo da IDV: botão redondo de vidro claro (como os
-/// cards e o menu), ícone na cor da ação; ao passar o mouse, preenche com a
-/// cor e o ícone fica branco.
+/// Ação do card: só o ícone, na cor da ação. No hover ele cresce, sobe um
+/// pouco e a cor fica mais forte.
 class _Acao extends StatefulWidget {
   const _Acao({
     required this.icone,
@@ -313,38 +348,37 @@ class _AcaoState extends State<_Acao> {
 
   @override
   Widget build(BuildContext context) {
+    const duracao = Duration(milliseconds: 180);
     return Tooltip(
       message: widget.dica,
+      waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
         child: GestureDetector(
           onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOut,
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _hover ? widget.cor : Colors.white.withOpacity(0.75),
-              border: Border.all(
-                color: _hover ? widget.cor : widget.cor.withOpacity(0.25),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: (_hover ? widget.cor : const Color(0xFF1C1F3A))
-                      .withOpacity(_hover ? 0.3 : 0.08),
-                  blurRadius: _hover ? 10 : 6,
-                  offset: const Offset(0, 2),
+          // Área de clique maior que o ícone.
+          child: Container(
+            color: Colors.transparent,
+            padding: const EdgeInsets.all(6),
+            child: AnimatedSlide(
+              offset: Offset(0, _hover ? -0.12 : 0),
+              duration: duracao,
+              curve: Curves.easeOutCubic,
+              child: AnimatedScale(
+                scale: _hover ? 1.22 : 1,
+                duration: duracao,
+                curve: Curves.easeOutCubic,
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(
+                    end: _hover ? widget.cor : widget.cor.withOpacity(0.7),
+                  ),
+                  duration: duracao,
+                  builder: (_, cor, __) =>
+                      FaIcon(widget.icone, size: 16, color: cor),
                 ),
-              ],
-            ),
-            child: Icon(
-              widget.icone,
-              size: 17,
-              color: _hover ? Colors.white : widget.cor,
+              ),
             ),
           ),
         ),

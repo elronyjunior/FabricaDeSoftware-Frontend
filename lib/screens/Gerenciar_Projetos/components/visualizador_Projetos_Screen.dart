@@ -4,10 +4,10 @@ import 'package:fabrica_software_app/screens/Tests/Teste_screen.dart';
 import 'package:fabrica_software_app/screens/Treinamentos/ListaTreinamentosScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 import 'package:fabrica_software_app/screens/Documento/Documentos_Projeto_Screen.dart';
 // Import da tela de recursos
-import 'package:fabrica_software_app/screens/Recursos/Recursos.dart'; 
+import 'package:fabrica_software_app/screens/Recursos/Recursos.dart';
 
 class VisualizarProjetoScreen extends StatelessWidget {
   final Projeto projeto;
@@ -18,7 +18,8 @@ class VisualizarProjetoScreen extends StatelessWidget {
   IconData _getIcon() {
     final tipo = (projeto.tipo ?? projeto.modeloProjeto ?? '').toUpperCase();
     if (tipo.contains('WEB')) return Icons.language;
-    if (tipo.contains('MOBILE') || tipo.contains('APP')) return Icons.smartphone;
+    if (tipo.contains('MOBILE') || tipo.contains('APP'))
+      return Icons.smartphone;
     if (tipo.contains('API')) return Icons.storage;
     return Icons.folder_open;
   }
@@ -39,13 +40,29 @@ class VisualizarProjetoScreen extends StatelessWidget {
   ({String label, Color bg, Color fg}) _complexidadeInfo() {
     switch (projeto.complexidade) {
       case ComplexidadeProjeto.alta:
-        return (label: "Alta", bg: Colors.red.shade100, fg: Colors.red.shade700);
+        return (
+          label: "Alta",
+          bg: Colors.red.shade100,
+          fg: Colors.red.shade700
+        );
       case ComplexidadeProjeto.media:
-        return (label: "Média", bg: Colors.orange.shade100, fg: Colors.orange.shade700);
+        return (
+          label: "Média",
+          bg: Colors.orange.shade100,
+          fg: Colors.orange.shade700
+        );
       case ComplexidadeProjeto.baixa:
-        return (label: "Baixa", bg: Colors.green.shade100, fg: Colors.green.shade700);
+        return (
+          label: "Baixa",
+          bg: Colors.green.shade100,
+          fg: Colors.green.shade700
+        );
       default:
-        return (label: "Não definida", bg: Colors.grey.shade200, fg: Colors.grey.shade700);
+        return (
+          label: "Não definida",
+          bg: Colors.grey.shade200,
+          fg: Colors.grey.shade700
+        );
     }
   }
 
@@ -67,15 +84,22 @@ class VisualizarProjetoScreen extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8)),
               child: Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Visualizar Projeto", style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 18)),
-                Text(projeto.nomeProjeto, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                const Text("Visualizar Projeto",
+                    style: TextStyle(
+                        color: Color(0xFF1E293B),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18)),
+                Text(projeto.nomeProjeto,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
               ],
             ),
           ],
@@ -108,25 +132,40 @@ class VisualizarProjetoScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _InfoLabel(label: "Descrição do Projeto", value: projeto.descricao ?? "Sem descrição definida."),
+                                    _InfoLabel(
+                                        label: "Descrição do Projeto",
+                                        value: projeto.descricao ??
+                                            "Sem descrição definida."),
                                     const SizedBox(height: 16),
                                     Row(
                                       children: [
-                                        Expanded(child: _InfoLabel(label: "Tipo de Projeto", value: projeto.tipo ?? "Geral")),
+                                        Expanded(
+                                            child: _InfoLabel(
+                                                label: "Tipo de Projeto",
+                                                value:
+                                                    projeto.tipo ?? "Geral")),
                                         Builder(builder: (context) {
-                                          final complexidade = _complexidadeInfo();
-                                          return _StatusTag(label: "Complexidade", value: complexidade.label, color: complexidade.bg, textColor: complexidade.fg);
+                                          final complexidade =
+                                              _complexidadeInfo();
+                                          return _StatusTag(
+                                              label: "Complexidade",
+                                              value: complexidade.label,
+                                              color: complexidade.bg,
+                                              textColor: complexidade.fg);
                                         }),
                                       ],
                                     ),
                                     const SizedBox(height: 16),
-                                    _InfoLabel(label: "Escopo", value: projeto.escopo ?? "Escopo não definido."),
+                                    _InfoLabel(
+                                        label: "Escopo",
+                                        value: projeto.escopo ??
+                                            "Escopo não definido."),
                                   ],
                                 ),
                               ),
                             ),
                             const SizedBox(width: 16),
-                            
+
                             // COLUNA 2: Pessoas
                             Expanded(
                               flex: 3,
@@ -137,11 +176,18 @@ class VisualizarProjetoScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _PersonRow(role: "Cliente", name: projeto.clienteNome ?? "Não informado"),
+                                    _PersonRow(
+                                        role: "Cliente",
+                                        name: projeto.clienteNome ??
+                                            "Não informado"),
                                     const SizedBox(height: 12),
-                                    const _PersonRow(role: "Responsável", name: "João Silva"),
+                                    const _PersonRow(
+                                        role: "Responsável",
+                                        name: "João Silva"),
                                     const SizedBox(height: 12),
-                                    const _PersonRow(role: "Criado por", name: "Maria Santos"),
+                                    const _PersonRow(
+                                        role: "Criado por",
+                                        name: "Maria Santos"),
                                   ],
                                 ),
                               ),
@@ -159,11 +205,17 @@ class VisualizarProjetoScreen extends StatelessWidget {
                                       icon: Icons.settings_suggest_outlined,
                                       color: Colors.green,
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          _InfoLabel(label: "Modelo", value: projeto.modeloProjeto ?? "Ágil"),
+                                          _InfoLabel(
+                                              label: "Modelo",
+                                              value: projeto.modeloProjeto ??
+                                                  "Ágil"),
                                           const SizedBox(height: 8),
-                                          const _InfoLabel(label: "Framework", value: "Scrum"),
+                                          const _InfoLabel(
+                                              label: "Framework",
+                                              value: "Scrum"),
                                         ],
                                       ),
                                     ),
@@ -175,20 +227,34 @@ class VisualizarProjetoScreen extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFDCFCE7),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.green.shade200),
+                                      border: Border.all(
+                                          color: Colors.green.shade200),
                                     ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
-                                            Icon(Icons.attach_money, color: Colors.green.shade700, size: 20),
+                                            Icon(Icons.attach_money,
+                                                color: Colors.green.shade700,
+                                                size: 20),
                                             const SizedBox(width: 8),
-                                            Text("Orçamento", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                                            Text("Orçamento",
+                                                style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        Colors.green.shade800)),
                                           ],
                                         ),
                                         const SizedBox(height: 8),
-                                        Text(_formatarOrcamento(projeto.orcamentoEstimado), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green.shade900)),
+                                        Text(
+                                            _formatarOrcamento(
+                                                projeto.orcamentoEstimado),
+                                            style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green.shade900)),
                                       ],
                                     ),
                                   ),
@@ -202,22 +268,28 @@ class VisualizarProjetoScreen extends StatelessWidget {
                       return Column(
                         children: [
                           _BentoCard(
-                            title: "Informações Básicas", 
-                            icon: Icons.description, color: Colors.blue,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _InfoLabel(label: "Descrição", value: projeto.descricao ?? ""),
-                                const SizedBox(height: 12),
-                                _InfoLabel(label: "Tipo", value: projeto.tipo ?? ""),
-                              ],
-                            )
-                          ),
+                              title: "Informações Básicas",
+                              icon: Icons.description,
+                              color: Colors.blue,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _InfoLabel(
+                                      label: "Descrição",
+                                      value: projeto.descricao ?? ""),
+                                  const SizedBox(height: 12),
+                                  _InfoLabel(
+                                      label: "Tipo", value: projeto.tipo ?? ""),
+                                ],
+                              )),
                           const SizedBox(height: 16),
                           _BentoCard(
-                            title: "Gestão de Pessoas", 
-                            icon: Icons.people, color: Colors.purple,
-                            child: _PersonRow(role: "Cliente", name: projeto.clienteNome ?? "-"),
+                            title: "Gestão de Pessoas",
+                            icon: Icons.people,
+                            color: Colors.purple,
+                            child: _PersonRow(
+                                role: "Cliente",
+                                name: projeto.clienteNome ?? "-"),
                           ),
                         ],
                       );
@@ -233,22 +305,26 @@ class VisualizarProjetoScreen extends StatelessWidget {
                     title: "Planejamento",
                     icon: Icons.calendar_today_outlined,
                     color: Colors.orange,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _DateInfo(label: "Data de Início", value: _formatDate(projeto.dataInicio)),
-                            _DateInfo(label: "Previsão de Término", value: _formatDate(projeto.dataFinalPrevisto)),
-                            
-                            if (constraints.maxWidth > 500) ...[
-                               const _DateInfo(label: "Data de Término Real", value: "--/--/----"),
-                               const _DateInfo(label: "Duração Total", value: "12 meses"),
-                            ]
-                          ],
-                        );
-                      }
-                    ),
+                    child: LayoutBuilder(builder: (context, constraints) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _DateInfo(
+                              label: "Data de Início",
+                              value: _formatDate(projeto.dataInicio)),
+                          _DateInfo(
+                              label: "Previsão de Término",
+                              value: _formatDate(projeto.dataFinalPrevisto)),
+                          if (constraints.maxWidth > 500) ...[
+                            const _DateInfo(
+                                label: "Data de Término Real",
+                                value: "--/--/----"),
+                            const _DateInfo(
+                                label: "Duração Total", value: "12 meses"),
+                          ]
+                        ],
+                      );
+                    }),
                   ),
 
                   const SizedBox(height: 24),
@@ -267,14 +343,16 @@ class VisualizarProjetoScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         childAspectRatio: isDesktop ? 2.5 : 1.6,
                         children: [
-                          
                           // --- CARD RECURSOS (ATUALIZADO) ---
                           _DashboardInfoCard(
                             title: "Gestão de Recursos",
                             icon: Icons.people,
                             themeColor: const Color(0xFF1E40AF),
                             stats: const [
-                              {"label": "Desenvolvedores", "value": "6 membros"},
+                              {
+                                "label": "Desenvolvedores",
+                                "value": "6 membros"
+                              },
                               {"label": "QA", "value": "3 membros"},
                               {"label": "Product Owner", "value": "1 membro"},
                             ],
@@ -284,7 +362,8 @@ class VisualizarProjetoScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => Recursos(projetoVinculado: projeto),
+                                  builder: (context) =>
+                                      Recursos(projetoVinculado: projeto),
                                 ),
                               );
                             },
@@ -296,7 +375,7 @@ class VisualizarProjetoScreen extends StatelessWidget {
                             icon: Icons.folder,
                             themeColor: const Color(0xFF16A34A),
                             stats: const [
-                              {"label": "Documentos", "value": "Acessar"}, 
+                              {"label": "Documentos", "value": "Acessar"},
                               {"label": "Repositório", "value": "Drive"},
                             ],
                             buttonText: "Ver Documentos",
@@ -304,7 +383,8 @@ class VisualizarProjetoScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => DocumentosProjetoScreen(projeto: projeto),
+                                  builder: (context) =>
+                                      DocumentosProjetoScreen(projeto: projeto),
                                 ),
                               );
                             },
@@ -324,7 +404,8 @@ class VisualizarProjetoScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => ListaTreinamentosScreen(projeto: projeto),
+                                  builder: (context) =>
+                                      ListaTreinamentosScreen(projeto: projeto),
                                 ),
                               );
                             },
@@ -336,16 +417,25 @@ class VisualizarProjetoScreen extends StatelessWidget {
                             themeColor: const Color(0xFF9333EA),
                             stats: const [
                               {"label": "Testes executados", "value": "156"},
-                              {"label": "Taxa de sucesso", "value": "94%", "valueColor": Colors.green},
-                              {"label": "Bugs encontrados", "value": "8", "valueColor": Colors.red},
+                              {
+                                "label": "Taxa de sucesso",
+                                "value": "94%",
+                                "valueColor": Colors.green
+                              },
+                              {
+                                "label": "Bugs encontrados",
+                                "value": "8",
+                                "valueColor": Colors.red
+                              },
                             ],
                             buttonText: "Ver Relatórios",
-                             onPressed: () {
+                            onPressed: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => TestesScreen(projetoId: projeto.id ?? 0, nomeProjeto: projeto.nomeProjeto)
-                                ),
+                                    builder: (context) => TestesScreen(
+                                        projetoId: projeto.id ?? 0,
+                                        nomeProjeto: projeto.nomeProjeto)),
                               );
                             },
                           ),
@@ -388,7 +478,11 @@ class _BentoCard extends StatelessWidget {
   final Color color;
   final Widget child;
 
-  const _BentoCard({required this.title, required this.icon, required this.color, required this.child});
+  const _BentoCard(
+      {required this.title,
+      required this.icon,
+      required this.color,
+      required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -397,7 +491,12 @@ class _BentoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
+        ],
         border: Border.all(color: Colors.grey.shade100),
       ),
       child: Column(
@@ -407,7 +506,11 @@ class _BentoCard extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: color),
               const SizedBox(width: 8),
-              Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[700])),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700])),
             ],
           ),
           const SizedBox(height: 16),
@@ -431,7 +534,9 @@ class _InfoLabel extends StatelessWidget {
       children: [
         Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), height: 1.4)),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 14, color: Color(0xFF1E293B), height: 1.4)),
       ],
     );
   }
@@ -443,7 +548,11 @@ class _StatusTag extends StatelessWidget {
   final Color color;
   final Color textColor;
 
-  const _StatusTag({required this.label, required this.value, required this.color, required this.textColor});
+  const _StatusTag(
+      {required this.label,
+      required this.value,
+      required this.color,
+      required this.textColor});
 
   @override
   Widget build(BuildContext context) {
@@ -454,8 +563,11 @@ class _StatusTag extends StatelessWidget {
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
-          child: Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor)),
+          decoration: BoxDecoration(
+              color: color, borderRadius: BorderRadius.circular(6)),
+          child: Text(value,
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.bold, color: textColor)),
         ),
       ],
     );
@@ -478,7 +590,11 @@ class _PersonRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(role, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-            Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1E293B))),
+            Text(name,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1E293B))),
           ],
         )
       ],
@@ -501,11 +617,16 @@ class _DateInfo extends StatelessWidget {
           children: [
             Icon(Icons.calendar_today, size: 14, color: Colors.grey[400]),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            Text(label,
+                style: TextStyle(fontSize: 12, color: Colors.grey[500])),
           ],
         ),
         const SizedBox(height: 6),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1E293B))),
       ],
     );
   }
@@ -535,7 +656,12 @@ class _DashboardInfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -550,24 +676,39 @@ class _DashboardInfoCard extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: themeColor, borderRadius: BorderRadius.circular(6)),
+                        decoration: BoxDecoration(
+                            color: themeColor,
+                            borderRadius: BorderRadius.circular(6)),
                         child: Icon(icon, color: Colors.white, size: 18),
                       ),
                       const SizedBox(width: 10),
-                      Flexible(child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)), overflow: TextOverflow.ellipsis)),
+                      Flexible(
+                          child: Text(title,
+                              style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B)),
+                              overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                   const SizedBox(height: 24),
                   ...stats.map((stat) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(stat['label'], style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                        Text(stat['value'], style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: stat['valueColor'] ?? const Color(0xFF1E293B))),
-                      ],
-                    ),
-                  )),
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(stat['label'],
+                                style: TextStyle(
+                                    color: Colors.grey[600], fontSize: 13)),
+                            Text(stat['value'],
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: stat['valueColor'] ??
+                                        const Color(0xFF1E293B))),
+                          ],
+                        ),
+                      )),
                 ],
               ),
             ),
@@ -577,14 +718,16 @@ class _DashboardInfoCard extends StatelessWidget {
             height: 44,
             child: ElevatedButton.icon(
               onPressed: onPressed,
-              icon: const Icon(Icons.arrow_forward, size: 16, color: Colors.white),
+              icon: const Icon(Icons.arrow_forward,
+                  size: 16, color: Colors.white),
               label: Text(buttonText, style: const TextStyle(fontSize: 13)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: themeColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero),
               ),
             ),
           ),

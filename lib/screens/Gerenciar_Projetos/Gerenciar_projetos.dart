@@ -115,8 +115,8 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
               if (!desktop)
                 Builder(
                   builder: (ctx) => IconButton(
-                    icon: const Icon(Icons.menu,
-                        color: StyleProjetos.azulEscuro),
+                    icon:
+                        const Icon(Icons.menu, color: StyleProjetos.azulEscuro),
                     onPressed: () => Scaffold.of(ctx).openDrawer(),
                   ),
                 ),
@@ -197,8 +197,8 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
             const SizedBox(height: 8),
             TextButton(
               onPressed: _recarregar,
-              style: TextButton.styleFrom(
-                  foregroundColor: StyleProjetos.laranja),
+              style:
+                  TextButton.styleFrom(foregroundColor: StyleProjetos.laranja),
               child: const Text('Tentar novamente'),
             ),
           ],
@@ -228,39 +228,44 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
                 ? 2
                 : 1;
 
-        return CustomScrollView(
-          controller: _rolagem,
-          slivers: [
-            SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: colunas,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 15,
-                mainAxisExtent: StyleProjetos.cardAltura,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (_, i) => ProjectCard(projeto: visiveis[i]),
-                childCount: visiveis.length,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 28),
-                child: Center(
-                  child: temMais
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: StyleProjetos.laranja,
-                          ),
-                        )
-                      : const SizedBox.shrink(),
+        // A área de rolagem é um pouco maior que o espaço da grade (folga dos
+        // lados e em cima), com o mesmo valor de padding por dentro: os cards
+        // ficam no mesmo lugar, mas o card ampliado no hover e a sombra dele
+        // não são mais cortados pela borda da rolagem.
+        return _ComFolga(
+          folga: _folgaGrade,
+          child: CustomScrollView(
+            controller: _rolagem,
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                    _folgaGrade, _folgaGrade, _folgaGrade, 0),
+                sliver: SliverToBoxAdapter(
+                  child: _GradeCards(
+                    projetos: visiveis,
+                    colunas: colunas,
+                  ),
                 ),
               ),
-            ),
-          ],
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  child: Center(
+                    child: temMais
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: StyleProjetos.laranja,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -475,6 +480,107 @@ class _IconeAZ extends StatelessWidget {
           Icon(Icons.arrow_downward, size: tamanho * 0.62, color: tema.color),
         ],
       ),
+    );
+  }
+}
+
+/// Folga em volta da grade para o card ampliado (hover) e a sombra caberem.
+const double _folgaGrade = 22;
+
+/// Estende o [child] [folga] px para os lados e para cima, além do espaço que
+/// ele recebeu (sem mudar o layout do resto da tela).
+class _ComFolga extends StatelessWidget {
+  const _ComFolga({required this.folga, required this.child});
+
+  final double folga;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) => OverflowBox(
+        alignment: Alignment.bottomCenter,
+        minWidth: c.maxWidth + folga * 2,
+        maxWidth: c.maxWidth + folga * 2,
+        minHeight: c.maxHeight + folga,
+        maxHeight: c.maxHeight + folga,
+        child: child,
+      ),
+    );
+  }
+}
+
+/// Grade de cards em que o card com o mouse por cima é desenhado por último,
+/// ficando acima dos vizinhos enquanto está ampliado.
+class _GradeCards extends StatefulWidget {
+  const _GradeCards({required this.projetos, required this.colunas});
+
+  final List<Projeto> projetos;
+  final int colunas;
+
+  @override
+  State<_GradeCards> createState() => _GradeCardsState();
+}
+
+class _GradeCardsState extends State<_GradeCards> {
+  static const _espacoX = 16.0;
+  static const _espacoY = 15.0;
+
+  Object? _emCima;
+
+  Object _chave(Projeto p, int i) => p.id ?? 'i$i';
+
+  @override
+  Widget build(BuildContext context) {
+    final projetos = widget.projetos;
+    final colunas = widget.colunas;
+    final linhas = (projetos.length / colunas).ceil();
+    const altura = StyleProjetos.cardAltura;
+
+    return LayoutBuilder(
+      builder: (context, c) {
+        final largura = (c.maxWidth - _espacoX * (colunas - 1)) / colunas;
+
+        Widget card(int i) {
+          final p = projetos[i];
+          final chave = _chave(p, i);
+          return Positioned(
+            key: ValueKey(chave),
+            left: (i % colunas) * (largura + _espacoX),
+            top: (i ~/ colunas) * (altura + _espacoY),
+            width: largura,
+            height: altura,
+            child: ProjectCard(
+              projeto: p,
+              aoPassarMouse: (dentro) => setState(() {
+                if (dentro) {
+                  _emCima = chave;
+                } else if (_emCima == chave) {
+                  _emCima = null;
+                }
+              }),
+            ),
+          );
+        }
+
+        final indices = List<int>.generate(projetos.length, (i) => i);
+        // O card em hover vai para o fim da lista (desenhado por cima). As
+        // chaves mantêm o estado de cada card ao mudar a ordem.
+        final emCima =
+            indices.where((i) => _chave(projetos[i], i) == _emCima).toList();
+        final ordem = [
+          ...indices.where((i) => !emCima.contains(i)),
+          ...emCima,
+        ];
+
+        return SizedBox(
+          height: linhas == 0 ? 0 : linhas * altura + (linhas - 1) * _espacoY,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [for (final i in ordem) card(i)],
+          ),
+        );
+      },
     );
   }
 }
