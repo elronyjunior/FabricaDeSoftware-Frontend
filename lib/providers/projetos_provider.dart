@@ -31,24 +31,41 @@ class ProjetosProvider with ChangeNotifier {
       // 2. Filtro de Cliente (trata nulos)
       final clienteMatch = (projeto.clienteNome ?? '').toLowerCase().contains(_filtroCliente.toLowerCase());
       
-      // 3. Filtro de Tipo (Modelo)
+      // 3. Filtro de Tipo: o mesmo tipo mostrado no card (tipo, ou o
+      // modelo quando o tipo está vazio).
       bool tipoMatch = true;
-      if (_filtroTipo != 'Todos os tipos') {
-        // Compara ignorando maiusculas/minusculas
-        tipoMatch = (projeto.modeloProjeto ?? '').toLowerCase() == _filtroTipo.toLowerCase();
-        // Ou se preferir "contains":
-        // tipoMatch = (projeto.modeloProjeto ?? '').toLowerCase().contains(_filtroTipo.toLowerCase());
+      if (!_semFiltro(_filtroTipo)) {
+        tipoMatch = _tipoDe(projeto) == _filtroTipo.toUpperCase();
       }
 
       // 4. Filtro de Status
       bool statusMatch = true;
-      if (_filtroStatus != 'Todos os status') {
+      if (!_semFiltro(_filtroStatus)) {
         // Usa o getter calculado que criamos no Model
         statusMatch = projeto.statusCalculado.toLowerCase() == _filtroStatus.toLowerCase();
       }
 
       return nomeMatch && clienteMatch && tipoMatch && statusMatch;
     }).toList();
+  }
+
+  /// "Todos" (do diálogo de filtro) ou "Todos os ..." = sem filtro.
+  static bool _semFiltro(String valor) =>
+      valor.trim().isEmpty || valor.toLowerCase().startsWith('todos');
+
+  static String _tipoDe(Projeto p) {
+    final tipo = (p.tipo ?? '').trim();
+    return (tipo.isNotEmpty ? tipo : (p.modeloProjeto ?? '')).toUpperCase();
+  }
+
+  /// Tipos que existem nos projetos carregados (opções do filtro).
+  List<String> get tiposDisponiveis {
+    final tipos = {
+      for (final p in _projetos)
+        if (_tipoDe(p).isNotEmpty) _tipoDe(p)
+    }.toList()
+      ..sort();
+    return tipos;
   }
 
   // Ações

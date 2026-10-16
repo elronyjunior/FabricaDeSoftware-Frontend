@@ -9,8 +9,8 @@ typedef FiltrosProjeto = ({String tipo, String status, String cliente});
 
 const FiltrosProjeto _semFiltros = (tipo: 'Todos', status: 'Todos', cliente: '');
 
-const _opcoesTipo = ['Todos', 'WEB', 'MOBILE', 'API', 'AI', 'DESKTOP', 'DATA'];
-const _opcoesStatus = ['Todos', 'Em processo', 'Concluído', 'Atrasado', 'Pausado'];
+// Os mesmos status que o card calcula (Projeto.statusCalculado).
+const _opcoesStatus = ['Todos', 'Em processo', 'Concluído', 'Atrasado'];
 
 // =====================================================================
 // Botão "Filtro" com contador de filtros ativos
@@ -145,7 +145,8 @@ class _DialogFiltrosState extends State<_DialogFiltros> {
   Widget _dropdown(
       List<String> opcoes, String valor, ValueChanged<String> aoMudar) {
     return DropdownButtonFormField<String>(
-      value: valor,
+      // Valor que não está mais entre as opções volta para "Todos".
+      value: opcoes.contains(valor) ? valor : opcoes.first,
       isExpanded: true,
       borderRadius: BorderRadius.circular(12),
       decoration: _decoracao(),
@@ -179,7 +180,12 @@ class _DialogFiltrosState extends State<_DialogFiltros> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _rotulo('Tipo'),
-            _dropdown(_opcoesTipo, _tipo, (v) => setState(() => _tipo = v)),
+            _dropdown(
+              // Tipos que existem nos projetos carregados.
+              ['Todos', ...context.read<ProjetosProvider>().tiposDisponiveis],
+              _tipo,
+              (v) => setState(() => _tipo = v),
+            ),
             const SizedBox(height: 16),
             _rotulo('Status'),
             _dropdown(_opcoesStatus, _status, (v) => setState(() => _status = v)),

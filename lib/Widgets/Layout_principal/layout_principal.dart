@@ -257,10 +257,15 @@ class _CamadaModalViewState extends State<_CamadaModalView>
       },
       // Navigator próprio: os pop-ups abertos de dentro do modal (confirmar,
       // calendário, tela cheia) aparecem por cima dele.
-      child: Navigator(
-        onGenerateRoute: (_) => PageRouteBuilder<void>(
-          opaque: false,
-          pageBuilder: (_, __, ___) => widget.child,
+      // HeroControllerScope.none: sem isso este Navigator dividiria o
+      // HeroController do app com o Navigator principal, que ficava travado
+      // depois de fechar o modal (cliques sem abrir telas nem diálogos).
+      child: HeroControllerScope.none(
+        child: Navigator(
+          onGenerateRoute: (_) => PageRouteBuilder<void>(
+            opaque: false,
+            pageBuilder: (_, __, ___) => widget.child,
+          ),
         ),
       ),
     );
