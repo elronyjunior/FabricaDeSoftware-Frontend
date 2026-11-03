@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_novo_projeto.dart';
 import 'package:fabrica_software_app/models/projeto.dart';
 import 'package:fabrica_software_app/providers/projetos_provider.dart';
@@ -67,7 +68,7 @@ class _ProjectCardState extends State<ProjectCard> {
   }
 
   void _excluir() {
-    showDialog(
+    mostrarDialogo(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Excluir projeto'),

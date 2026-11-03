@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/screens/Documento/Criar_Doc_Modal.dart';
 import 'package:fabrica_software_app/screens/Documento/Visualizar_Documento_Screen.dart';
@@ -78,7 +79,7 @@ class _DocumentosProjetoScreenState extends State<DocumentosProjetoScreen> {
 
   // Lógica para Deletar (Banco + Drive)
   Future<void> _deletarDocumento(int id) async {
-    final confirmar = await showDialog<bool>(
+    final confirmar = await mostrarDialogo<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -143,7 +144,7 @@ class _DocumentosProjetoScreenState extends State<DocumentosProjetoScreen> {
               alignment: Alignment.centerLeft, 
               child: ElevatedButton.icon(
                 onPressed: () {
-                  showDialog(
+                  mostrarDialogo(
                     context: context,
                     builder: (_) => ModalCriarDocIA(
                       projetoId: widget.projeto.id!,

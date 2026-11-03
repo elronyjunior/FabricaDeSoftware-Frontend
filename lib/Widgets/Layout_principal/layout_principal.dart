@@ -1,6 +1,5 @@
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:fabrica_software_app/providers/auth_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
@@ -73,7 +72,7 @@ class ObservadorRotas extends NavigatorObserver with ChangeNotifier {
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     if (route is PageRoute) {
       _paginas.add(route);
-    } else if (route is PopupRoute) {
+    } else if (_escurece(route)) {
       _popups++;
     }
     _avisar();
@@ -101,12 +100,16 @@ class ObservadorRotas extends NavigatorObserver with ChangeNotifier {
 
   void _remover(Route<dynamic> route) {
     if (route is PopupRoute) {
-      if (_popups > 0) _popups--;
+      if (_escurece(route) && _popups > 0) _popups--;
     } else {
       _paginas.remove(route);
     }
     _avisar();
   }
+
+  /// Pop-ups com fundo escurecido (os menus e listas suspensas não têm).
+  static bool _escurece(Route<dynamic> route) =>
+      route is PopupRoute && (route.barrierColor?.alpha ?? 0) > 0;
 
   /// O Navigator avisa no meio do build; a atualização do menu
   /// fica para depois do frame.
@@ -177,39 +180,103 @@ class MenuLateral extends StatelessWidget {
 // =====================================================================
 
 /// Modal que cobre a janela inteira, inclusive o menu lateral fixo (que fica
-/// fora do Navigator). Um único fundo escurecido e desfocado para tudo.
+/// fora do Navigator). Um único fundo escurecido para tudo: tela, menu e a
+/// sombra do menu escurecem juntos, na mesma animação de entrada e saída.
+///
+/// Todos os diálogos do app abrem aqui ([mostrarDialogo]): se abrissem no
+/// Navigator principal, o escurecido ficaria só à direita do menu e o menu
+/// teria que ser escurecido à parte.
 class CamadaModal {
   CamadaModal._();
 
   static final conteudo = ValueNotifier<Widget?>(null);
   static Completer<void>? _aoFechar;
 
+  /// Muda a cada abertura: cada modal ganha uma camada (e um Navigator) nova.
+  static int _id = 0;
+
+  /// Pedido de fechar: a camada faz a animação de saída e depois some.
+  static final _fechando = ValueNotifier<bool>(false);
+
+  /// Navigator da camada (os diálogos abertos por [mostrarDialogo]).
+  static final navegador = GlobalKey<NavigatorState>();
+
   static bool get aberta => conteudo.value != null;
 
-  /// Fundo claro e desfocado (popovers, como o filtro de projetos) em vez
-  /// do escurecido dos modais grandes.
-  static bool claro = false;
-
   /// Mostra [modal]; completa quando [fechar] for chamado.
-  static Future<void> abrir(Widget modal, {bool fundoClaro = false}) {
-    claro = fundoClaro;
+  static Future<void> abrir(Widget modal) {
     _aoFechar?.complete();
     final completer = Completer<void>();
     _aoFechar = completer;
+    _id++;
+    _fechando.value = false;
     conteudo.value = modal;
     return completer.future;
   }
 
+  /// Abre a camada e empilha a rota criada por [criar] no Navigator dela.
+  /// A camada fecha (com a animação de saída) quando a rota sai.
+  static Future<T?> abrirRota<T>(
+      Route<T> Function(BuildContext context) criar) async {
+    abrir(const SizedBox.expand());
+    final id = _id;
+    await WidgetsBinding.instance.endOfFrame;
+    final nav = navegador.currentState;
+    if (nav == null || id != _id) return null;
+    final resultado = await nav.push<T>(criar(nav.context));
+    if (id == _id) fechar();
+    return resultado;
+  }
+
   static void fechar() {
-    conteudo.value = null;
+    if (conteudo.value == null) return;
+    _fechando.value = true;
     final completer = _aoFechar;
     _aoFechar = null;
     completer?.complete();
   }
+
+  /// Chamado pela camada no fim da animação de saída.
+  static void _remover(int id) {
+    if (id != _id) return;
+    _fechando.value = false;
+    conteudo.value = null;
+  }
+}
+
+/// Mesmo uso do `showDialog`, mas o diálogo abre na [CamadaModal], com o
+/// mesmo fundo de todos os modais. De dentro de um modal, abre por cima dele.
+Future<T?> mostrarDialogo<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+  bool useRootNavigator = true,
+}) {
+  final camada = CamadaModal.navegador.currentState;
+  final dentroDaCamada = camada != null &&
+      Navigator.maybeOf(context, rootNavigator: true) == camada;
+  if (dentroDaCamada) {
+    return showDialog<T>(
+      context: context,
+      builder: builder,
+      barrierDismissible: barrierDismissible,
+    );
+  }
+  final temas = InheritedTheme.capture(from: context, to: null);
+  return CamadaModal.abrirRota<T>(
+    (ctx) => DialogRoute<T>(
+      context: ctx,
+      builder: builder,
+      themes: temas,
+      barrierColor: Colors.transparent,
+      barrierDismissible: barrierDismissible,
+    ),
+  );
 }
 
 class _CamadaModalView extends StatefulWidget {
-  const _CamadaModalView({required this.child});
+  const _CamadaModalView({super.key, required this.id, required this.child});
+  final int id;
   final Widget child;
 
   @override
@@ -218,19 +285,29 @@ class _CamadaModalView extends StatefulWidget {
 
 class _CamadaModalViewState extends State<_CamadaModalView>
     with SingleTickerProviderStateMixin {
-  /// Barreira por trás do modal (também cobre o menu lateral): escura nos
-  /// modais grandes, clara e desfocada nos popovers.
-  Color get _barreira =>
-      CamadaModal.claro ? const Color(0x1F0F1030) : const Color(0xB8000000);
-  double get _desfoqueBarreira => CamadaModal.claro ? 6.0 : 8.0;
+  /// Fundo por trás de todos os modais (também cobre o menu lateral).
+  static const _barreira = Colors.black54;
 
   late final AnimationController _entrada = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 220),
+    reverseDuration: const Duration(milliseconds: 180),
   )..forward();
 
   @override
+  void initState() {
+    super.initState();
+    CamadaModal._fechando.addListener(_aoPedirFechar);
+  }
+
+  void _aoPedirFechar() {
+    if (!CamadaModal._fechando.value) return;
+    _entrada.reverse().whenComplete(() => CamadaModal._remover(widget.id));
+  }
+
+  @override
   void dispose() {
+    CamadaModal._fechando.removeListener(_aoPedirFechar);
     _entrada.dispose();
     super.dispose();
   }
@@ -241,39 +318,38 @@ class _CamadaModalViewState extends State<_CamadaModalView>
       animation: _entrada,
       builder: (context, filho) {
         final t = Curves.easeOutCubic.transform(_entrada.value);
-        return Stack(
-          children: [
-            // Fundo: absorve os toques e escurece/desfoca a janela toda.
-            Positioned.fill(
-              child: AbsorbPointer(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: _desfoqueBarreira * t,
-                    sigmaY: _desfoqueBarreira * t,
-                  ),
+        return IgnorePointer(
+          // Saindo: os toques já passam para a tela de trás.
+          ignoring: _entrada.status == AnimationStatus.reverse,
+          child: Stack(
+            children: [
+              // Fundo: absorve os toques e escurece a janela toda.
+              Positioned.fill(
+                child: AbsorbPointer(
                   child: ColoredBox(
-                    color: _barreira
-                        .withOpacity(_barreira.opacity * t),
+                    color: _barreira.withOpacity(_barreira.opacity * t),
                   ),
                 ),
               ),
-            ),
-            Positioned.fill(
-              child: Opacity(
-                opacity: t,
-                child: Transform.scale(scale: 0.97 + 0.03 * t, child: filho),
+              Positioned.fill(
+                child: Opacity(
+                  opacity: t,
+                  child:
+                      Transform.scale(scale: 0.97 + 0.03 * t, child: filho),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
-      // Navigator próprio: os pop-ups abertos de dentro do modal (confirmar,
-      // calendário, tela cheia) aparecem por cima dele.
+      // Navigator próprio: os diálogos e os pop-ups abertos de dentro do
+      // modal (confirmar, calendário, tela cheia) aparecem por cima dele.
       // HeroControllerScope.none: sem isso este Navigator dividiria o
       // HeroController do app com o Navigator principal, que ficava travado
       // depois de fechar o modal (cliques sem abrir telas nem diálogos).
       child: HeroControllerScope.none(
         child: Navigator(
+          key: CamadaModal.navegador,
           onGenerateRoute: (_) => PageRouteBuilder<void>(
             opaque: false,
             pageBuilder: (_, __, ___) => widget.child,
@@ -394,7 +470,11 @@ class LayoutPrincipal extends StatelessWidget {
               if (modal != null)
                 Positioned.fill(
                   key: const ValueKey('camada-modal'),
-                  child: _CamadaModalView(child: modal),
+                  child: _CamadaModalView(
+                    key: ValueKey(CamadaModal._id),
+                    id: CamadaModal._id,
+                    child: modal,
+                  ),
                 ),
             ],
           ),

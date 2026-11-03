@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -327,7 +328,7 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
 
   Future<void> _showNovoAlunoDialog(BuildContext context, dynamic provider) async {
     final nomeCtrl = TextEditingController(); final emailCtrl = TextEditingController();
-    showDialog(context: context, builder: (_) => AlertDialog(
+    mostrarDialogo(context: context, builder: (_) => AlertDialog(
       title: const Text("Novo Aluno"),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(controller: nomeCtrl, decoration: const InputDecoration(labelText: "Nome", border: OutlineInputBorder())),
@@ -342,7 +343,7 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
   }
 
   void _confirmarExclusaoDia(BuildContext context, dynamic provider, int index) {
-    showDialog(context: context, builder: (ctx) => AlertDialog(
+    mostrarDialogo(context: context, builder: (ctx) => AlertDialog(
       title: const Text("Remover Dia"),
       content: const Text("Tem certeza?"),
       actions: [

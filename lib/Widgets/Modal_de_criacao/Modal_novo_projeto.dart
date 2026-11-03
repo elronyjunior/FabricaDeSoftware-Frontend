@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Edicao_Projeto_step/EdicaoProjetoStep.dart';
 import 'package:fabrica_software_app/models/projeto.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Modal_step.dart';
@@ -24,11 +25,12 @@ Future<void> abrirModalNovoProjeto(BuildContext context, {Projeto? projeto}) {
   // depois que o painel fecha.
   final avisos = ScaffoldMessenger.of(context);
 
-  return showGeneralDialog<void>(
-    context: context,
+  // Abre na camada de modais: o fundo escurecido cobre a tela e o menu
+  // juntos, igual a todos os outros modais.
+  return CamadaModal.abrirRota<void>((_) => RawDialogRoute<void>(
     barrierDismissible: false,
     barrierLabel: edicao ? 'Editar projeto' : 'Novo projeto',
-    barrierColor: Colors.black54,
+    barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 260),
     pageBuilder: (_, __, ___) => ChangeNotifierProvider(
       create: (_) {
@@ -47,7 +49,7 @@ Future<void> abrirModalNovoProjeto(BuildContext context, {Projeto? projeto}) {
         child: FadeTransition(opacity: curva, child: painel),
       );
     },
-  );
+  ));
 }
 
 /// Painel lateral de criação de projeto: as etapas do formulário viram abas

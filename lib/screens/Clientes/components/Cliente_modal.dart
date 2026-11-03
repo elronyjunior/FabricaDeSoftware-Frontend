@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/providers/endereco_provider.dart';
 import 'package:fabrica_software_app/screens/Clientes/components/Endereco_modal.dart';
@@ -380,7 +381,7 @@ class _ClienteModalState extends State<ClienteModal> {
       setState(() { _isClienteModalLoading = false; });
     }
 
-    final novoEnderecoId = await showDialog<int>(
+    final novoEnderecoId = await mostrarDialogo<int>(
       context: context,
       barrierDismissible: false,
       useRootNavigator: false,
