@@ -1,3 +1,6 @@
+import 'package:fabrica_software_app/providers/auth_provider.dart';
+import 'package:fabrica_software_app/services/api_service.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
@@ -15,30 +18,26 @@ class EdicaoProjetoStep extends ModalStep {
   @override
   String get title => 'Editar Informações Básicas';
   @override
-  String get tabName => 'Editar';
+  String get tabName => 'Informações';
+  @override
+  String get ajuda =>
+      'Altere as informações gerais do projeto. Os campos com * são obrigatórios.';
   @override
   IconData get icon => FontAwesomeIcons.penToSquare;
   @override
   List<Color> get cores => [Colors.blue.shade700, Colors.blue.shade500];
 
   @override
+  bool validar() => _basicInfoStep.validar();
+
+  @override
   Widget buildBody(BuildContext context) => _basicInfoStep.buildBody(context);
 
   @override
-  Widget buildFooter(BuildContext context) => _EdicaoFooter();
-}
+  Widget buildFooter(BuildContext context) => _EdicaoFooter(etapa: this);
 
-class _EdicaoFooter extends StatefulWidget {
-  @override
-  State<_EdicaoFooter> createState() => _EdicaoFooterState();
-}
-
-class _EdicaoFooterState extends State<_EdicaoFooter> {
-  bool _isSaving = false;
-
-  Future<void> _salvarAlteracoes() async {
-    setState(() => _isSaving = true);
-
+  /// Envia as alterações. `true` quando salvou (quem chamou fecha o modal).
+  Future<bool> concluirEdicao(BuildContext context) async {
     try {
       // DTO já está atualizado pelo formulário.
       // Montamos o pacote completo para não apagar dados no banco.
@@ -51,42 +50,67 @@ class _EdicaoFooterState extends State<_EdicaoFooter> {
         'escopo': projetoDraft.escopo, // Mantém o que veio do loadFromModel
         'complexidade': projetoDraft.complexidade, // Mantém
         'orcamento_estimado': projetoDraft.orcamentoEstimado, // Mantém
-
-        // Datas importantes (envia null se não tiver data, mas se tiver, envia formatado)
         'data_inicio': projetoDraft.dataInicio?.toIso8601String(),
         'data_final_previsto':
             projetoDraft.dataFinalPrevista?.toIso8601String(),
-
-        // ID do cliente (obrigatório)
+        'data_final': projetoDraft.dataFinal?.toIso8601String(),
         'cliente_id':
             projetoDraft.cliente != null ? projetoDraft.cliente!['id'] : null,
+        // O back grava todos os campos: sem isso o responsável era apagado.
+        'responsavel_id': projetoDraft.responsavel?['id'],
       };
 
       if (projetoDraft.id != null) {
         await ProjetosService.instance
             .atualizarProjeto(projetoDraft.id!, dados);
-      }
 
-      if (mounted) {
-        context
-            .read<ProjetosProvider>()
-            .carregarProjetos(); // Atualiza a lista na tela
-        Navigator.pop(context); // Fecha o modal
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Projeto atualizado!'),
-              backgroundColor: Colors.green),
+        // O PUT de projetos não mexe nas tecnologias: elas são salvas à
+        // parte (adiciona as novas e remove as que foram desmarcadas).
+        if (!context.mounted) return false;
+        final usuarioId = context.read<AuthProvider>().userId ?? 0;
+        await ApiService.sincronizarTecnologiasDoProjeto(
+          projetoDraft.id!,
+          {
+            for (final t in projetoDraft.tecnologias)
+              if (int.tryParse('${t['id']}') != null) int.parse('${t['id']}'),
+          },
+          aprovadoPorId: usuarioId,
         );
       }
+      if (context.mounted) {
+        context.read<ProjetosProvider>().carregarProjetos();
+      }
+      return true;
     } catch (e) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text("Erro ao editar: $e"), backgroundColor: Colors.red),
-        );
+      if (context.mounted) {
+        avisar(context, 'Não foi possível salvar as alterações: $e');
       }
+      return false;
+    }
+  }
+}
+
+// Rodapé usado pelo modal antigo (ModalDeCriacao).
+class _EdicaoFooter extends StatefulWidget {
+  const _EdicaoFooter({required this.etapa});
+  final EdicaoProjetoStep etapa;
+
+  @override
+  State<_EdicaoFooter> createState() => _EdicaoFooterState();
+}
+
+class _EdicaoFooterState extends State<_EdicaoFooter> {
+  bool _isSaving = false;
+
+  Future<void> _salvarAlteracoes() async {
+    if (!widget.etapa.validar()) return;
+    setState(() => _isSaving = true);
+    final salvo = await widget.etapa.concluirEdicao(context);
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    if (salvo) {
+      Navigator.pop(context);
+      avisar(context, 'Projeto atualizado!', tipo: TipoAviso.sucesso);
     }
   }
 
