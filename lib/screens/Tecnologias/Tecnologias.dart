@@ -29,7 +29,7 @@ class _TecnologiasState extends State<Tecnologias> {
     
     return Scaffold(
       drawer: BarraLateral.drawer(context),
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: Colors.transparent, // fundo do LayoutPrincipal
       appBar: CustomAppBar(
         title: 'Gestão de Tecnologias',
         listaActions: [

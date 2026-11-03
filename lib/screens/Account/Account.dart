@@ -19,7 +19,7 @@ class Account extends StatelessWidget {
       drawer: BarraLateral.drawer(context),
       appBar: CustomAppBar(title: 'Perfil do Usuário'),
       
-      backgroundColor: const Color(0xFFF1F5F9), 
+      backgroundColor: Colors.transparent, // fundo do LayoutPrincipal
       body: Center(
         child: Container(
           width: double.infinity,
