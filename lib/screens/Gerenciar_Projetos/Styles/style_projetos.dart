@@ -26,11 +26,14 @@ class StyleProjetos {
     colors: [laranja, laranjaClaro],
   );
 
-  /// Superfície clara translúcida usada no menu lateral e nos cards.
+  /// Cor única dos cards: sólida, para todos ficarem iguais em qualquer
+  /// ponto do degradê do fundo (translúcida, cada card pegava um tom).
+  static const Color fundoCard = Color(0xFFF5F6FA);
+
+  /// Superfície dos cards de projeto.
   static BoxDecoration superficie({double raio = cardRaio}) => BoxDecoration(
-        color: Colors.white.withOpacity(0.45),
+        color: fundoCard,
         borderRadius: BorderRadius.circular(raio),
-        border: Border.all(color: Colors.white.withOpacity(0.9)),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF1C1F3A).withOpacity(0.08),

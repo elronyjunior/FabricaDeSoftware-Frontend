@@ -113,7 +113,6 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
         Colors.white.withOpacity(lerpDouble(0.35, 0.30, t)!),
       ],
     );
-    final borda = Colors.white.withOpacity(lerpDouble(0.9, 0.75, t)!);
 
     return Container(
       width: largura,
@@ -135,7 +134,6 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
             decoration: BoxDecoration(
               gradient: gradiente,
               borderRadius: raio,
-              border: Border.all(color: borda),
             ),
             // Material transparente: necessário para o efeito de toque
             // aparecer por cima do vidro.

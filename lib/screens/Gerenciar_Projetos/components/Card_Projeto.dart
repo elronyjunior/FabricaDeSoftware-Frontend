@@ -23,6 +23,9 @@ class _ProjectCardState extends State<ProjectCard> {
   bool _hover = false;
   bool _pressionado = false;
 
+  bool get _fixado =>
+      context.watch<ProjetosProvider>().estaFixado(widget.projeto.id);
+
   String get _tipo {
     final tipo = (widget.projeto.tipo ?? '').trim();
     return tipo.isNotEmpty ? tipo : (widget.projeto.modeloProjeto ?? 'Geral');
@@ -174,9 +177,14 @@ class _ProjectCardState extends State<ProjectCard> {
                       height: 30,
                       child: Row(
                         children: [
-                          // TODO: passar as fotos da equipe quando o modelo
-                          // Projeto tiver a lista de membros.
-                          const _Avatares(fotos: [], total: 0),
+                          _Avatares(
+                            nomes: [
+                              for (final m in context
+                                  .watch<ProjetosProvider>()
+                                  .membrosDoProjeto(p.id))
+                                m.nome
+                            ],
+                          ),
                           const Spacer(),
                           // No hover, o tipo dá lugar às ações (com fade).
                           AnimatedSwitcher(
@@ -186,6 +194,19 @@ class _ProjectCardState extends State<ProjectCard> {
                                     key: const ValueKey('acoes'),
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
+                                      _Acao(
+                                        icone: FontAwesomeIcons.thumbtack,
+                                        dica: _fixado
+                                            ? 'Desafixar do topo'
+                                            : 'Fixar no topo',
+                                        cor: _fixado
+                                            ? StyleProjetos.laranja
+                                            : StyleProjetos.textoSecundario,
+                                        onTap: () => context
+                                            .read<ProjetosProvider>()
+                                            .alternarFixado(p.id),
+                                      ),
+                                      const SizedBox(width: 8),
                                       _Acao(
                                         icone: FontAwesomeIcons.penToSquare,
                                         dica: 'Editar',
@@ -201,10 +222,22 @@ class _ProjectCardState extends State<ProjectCard> {
                                       ),
                                     ],
                                   )
-                                : Text(
-                                    _tipo.toUpperCase(),
+                                : Row(
                                     key: const ValueKey('tipo'),
-                                    style: StyleProjetos.cardRodape,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Fixado: o pino fica à vista.
+                                      if (_fixado) ...[
+                                        const Icon(FontAwesomeIcons.thumbtack,
+                                            size: 13,
+                                            color: StyleProjetos.laranja),
+                                        const SizedBox(width: 8),
+                                      ],
+                                      Text(
+                                        _tipo.toUpperCase(),
+                                        style: StyleProjetos.cardRodape,
+                                      ),
+                                    ],
                                   ),
                           ),
                         ],
@@ -267,47 +300,98 @@ class _PillStatus extends StatelessWidget {
   }
 }
 
-/// Mostra até 2 fotos da equipe e "+N" para o restante.
+/// Duas pessoas do projeto sobrepostas e "+N" para o restante da equipe
+/// (ex.: 5 membros = 2 avatares e "+3").
 class _Avatares extends StatelessWidget {
-  const _Avatares({required this.fotos, required this.total});
+  const _Avatares({required this.nomes});
 
-  final List<String> fotos;
-  final int total;
+  final List<String> nomes;
+
+  static const _raio = 13.0;
+  static const _sobreposicao = 9.0;
 
   @override
   Widget build(BuildContext context) {
-    if (fotos.isEmpty) return const _Avatar();
+    if (nomes.isEmpty) return const _Avatar();
 
-    final visiveis = fotos.take(2).toList();
-    final restantes = total - visiveis.length;
+    final visiveis = nomes.take(2).toList();
+    final restantes = nomes.length - visiveis.length;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final url in visiveis) ...[
-          _Avatar(url: url),
-          const SizedBox(width: 8),
+    return Tooltip(
+      message: nomes.join('\n'),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width:
+                _raio * 2 + (visiveis.length - 1) * (_raio * 2 - _sobreposicao),
+            height: _raio * 2,
+            child: Stack(
+              children: [
+                for (var i = 0; i < visiveis.length; i++)
+                  Positioned(
+                    left: i * (_raio * 2 - _sobreposicao),
+                    child: _Avatar(nome: visiveis[i], indice: i),
+                  ),
+              ],
+            ),
+          ),
+          if (restantes > 0) ...[
+            const SizedBox(width: 6),
+            Text('+$restantes', style: StyleProjetos.cardRodape),
+          ],
         ],
-        if (restantes > 0) Text('+$restantes', style: StyleProjetos.cardRodape),
-      ],
+      ),
     );
   }
 }
 
+/// Avatar com as iniciais da pessoa (o cadastro ainda não tem foto).
+/// Sem nome: ícone de pessoa (projeto sem equipe).
 class _Avatar extends StatelessWidget {
-  const _Avatar({this.url});
-  final String? url;
+  const _Avatar({this.nome, this.indice = 0});
+  final String? nome;
+  final int indice;
+
+  static const _cores = [StyleProjetos.azulEscuro, Color(0xFF4A4E6E)];
+
+  String get _iniciais {
+    final partes =
+        nome!.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (partes.isEmpty) return '?';
+    final primeira = partes.first[0];
+    final ultima = partes.length > 1 ? partes.last[0] : '';
+    return (primeira + ultima).toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 12,
-      backgroundColor: const Color(0xFFD9DBE5),
-      backgroundImage: url == null ? null : NetworkImage(url!),
-      child: url == null
-          ? const Icon(Icons.person,
-              size: 15, color: StyleProjetos.textoSecundario)
-          : null,
+    if (nome == null) {
+      return const CircleAvatar(
+        radius: 12,
+        backgroundColor: Color(0xFFD9DBE5),
+        child:
+            Icon(Icons.person, size: 15, color: StyleProjetos.textoSecundario),
+      );
+    }
+    return Container(
+      width: _Avatares._raio * 2,
+      height: _Avatares._raio * 2,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _cores[indice % _cores.length],
+        shape: BoxShape.circle,
+        // Anel claro separa os avatares sobrepostos.
+        border: Border.all(color: const Color(0xFFEEF0F6), width: 2),
+      ),
+      child: Text(
+        _iniciais,
+        style: StyleProjetos.cardRodape.copyWith(
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }
