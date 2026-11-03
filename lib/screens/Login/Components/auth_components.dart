@@ -12,6 +12,9 @@ import 'package:flutter_svg/svg.dart';
 /// Estrutura completa da tela: fundo de partículas, card de vidro
 /// centralizado e ícones de tema/ajuda no canto inferior direito.
 class AuthScaffold extends StatelessWidget {
+  /// Quanto da altura da janela o card ocupa (menor = card menor).
+  static const _alturaNaTela = 0.68;
+
   const AuthScaffold({
     super.key,
     required this.child,
@@ -31,26 +34,29 @@ class AuthScaffold extends StatelessWidget {
         children: [
           const Positioned.fill(child: _FundoAuth()),
           SafeArea(
-            // O card encolhe junto com a janela (proporção da referência:
-            // cerca de 70% da altura da tela), em vez de ocupar quase toda a
-            // altura em telas baixas ou com a escala do Windows.
-            child: LayoutBuilder(
-              builder: (context, c) => Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: (c.maxWidth - 32).clamp(0.0, double.infinity),
-                    maxHeight: c.maxHeight * 0.72,
-                  ),
+            // Login, cadastro e recuperar senha usam o mesmo card: mesmo
+            // tamanho e mesma escala, que depende só da janela (cerca de 68%
+            // da altura). O conteúdo fica centralizado dentro dele.
+            child: LayoutBuilder(builder: (context, c) {
+              final escala = [
+                1.0,
+                c.maxHeight * _alturaNaTela / StyleLogin.cardAltura,
+                (c.maxWidth - 32) / StyleLogin.cardLargura,
+              ].reduce((a, b) => a < b ? a : b).clamp(0.3, 1.0);
+              return Center(
+                child: SizedBox(
+                  width: StyleLogin.cardLargura * escala,
+                  height: StyleLogin.cardAltura * escala,
                   child: FittedBox(
-                    fit: BoxFit.scaleDown,
                     child: SizedBox(
                       width: StyleLogin.cardLargura,
-                      child: _CardVidro(child: child),
+                      height: StyleLogin.cardAltura,
+                      child: _CardVidro(child: Center(child: child)),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            }),
           ),
           Positioned(
             right: 56,
@@ -67,6 +73,41 @@ class AuthScaffold extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Topo das telas de entrada (login, cadastro e recuperar senha): logo,
+/// título e uma frase curta de explicação, sempre com os mesmos espaços.
+class CabecalhoAuth extends StatelessWidget {
+  const CabecalhoAuth(
+      {super.key, required this.titulo, required this.descricao});
+
+  final String titulo;
+  final String descricao;
+
+  /// Espaço entre os campos, igual nas três telas.
+  static const espacoCampos = 16.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const LogoTegra(),
+        const SizedBox(height: 4),
+        Text(titulo, textAlign: TextAlign.center, style: StyleLogin.titulo),
+        const SizedBox(height: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: StyleLogin.campoLargura),
+          child: Text(
+            descricao,
+            textAlign: TextAlign.center,
+            style: StyleLogin.rodape.copyWith(fontSize: 13, height: 1.4),
+          ),
+        ),
+        const SizedBox(height: 26),
+      ],
     );
   }
 }
