@@ -9,7 +9,12 @@ class StyleLogin {
   static const Color fundo = Color(0xFF07072E);
   static const Color laranja = Color(0xFFFF5F00);
   static const Color laranjaClaro = Color(0xFFFF8A1F);
-  static const Color bordaCampo = Color(0xFF9AA6F5);
+  /// Linha dos campos (contorno e separador do ícone): branco suave, como
+  /// na referência (antes era azulada).
+  static const Color bordaCampo = Color(0x8CFFFFFF);
+
+  /// Preenchimento dos campos: um tom só, sem escurecer no hover ou no foco.
+  static const Color fundoCampo = Color(0x1FFFFFFF);
   static const Color iconeCampo = Color(0xFF8D8DA3);
   static const Color linhaDivisor = Color(0xFF8E9BEF);
   static const Color texto = Colors.white;
