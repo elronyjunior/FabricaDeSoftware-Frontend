@@ -54,6 +54,9 @@ class ModalCriacaoProjetoProvider with ChangeNotifier {
 
   // --- GETTERS PARA A UI ---
 
+  /// Etapas da lista ativa (usadas como abas no ModalNovoProjeto).
+  List<ModalStep> get etapas => _listaAtiva;
+
   Widget returnBody(BuildContext context) {
     return _listaAtiva[_indice].buildBody(context);
   }

@@ -12,6 +12,21 @@ abstract class ModalStep {
   // envolve o corpo num SingleChildScrollView).
   bool get temPainelProprio => false;
 
+  // Usados pelo painel de criação com abas (ModalNovoProjeto), onde o
+  // usuário troca de aba livremente em vez de avançar passo a passo.
+
+  /// Aba que precisa ser aberta e validada antes de criar o projeto.
+  bool get obrigatoria => true;
+
+  /// Explicação da aba, mostrada no ícone "?" ao lado do título.
+  String? get ajuda => null;
+
+  /// Valida os dados da aba (mostra o próprio aviso quando falha).
+  bool validar() => true;
+
+  /// Grava no ProjetoDTO o que só é salvo ao sair da aba.
+  void salvar() {}
+
   Widget buildBody(BuildContext context);
   Widget buildFooter(BuildContext context);
 }
