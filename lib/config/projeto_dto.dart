@@ -62,7 +62,7 @@ class ProjetoDTO {
     id = p.id;
     nome = p.nomeProjeto;
     descricao = p.descricao;
-    tipo = _normalizarOpcao(p.tipo, ['Web', 'Mobile', 'Desktop', 'API', 'Híbrido', 'Outro']);
+    tipo = _normalizarOpcao(p.tipo, [...tiposProjeto, tipoOutro]);
     modelo = _normalizarOpcao(p.modeloProjeto, ['SaaS', 'Marketplace', 'E-commerce', 'B2B', 'Institucional', 'Interno', 'Outros']);
     metodologia = p.metodologia;
     escopo = p.escopo;
@@ -132,3 +132,16 @@ class ProjetoDTO {
 }
 
 final projetoDraft = ProjetoDTO();
+
+/// Tipos padrão de projeto. A lista completa (criar, editar e filtrar) junta
+/// estes com os tipos personalizados já salvos nos projetos e termina em
+/// [tipoOutro] (ver ProjetosProvider.tiposDisponiveis).
+const tiposProjeto = ['Web', 'Mobile', 'Desktop', 'API', 'Híbrido'];
+
+/// Opção que abre o campo para escrever um tipo novo.
+const tipoOutro = 'Outro';
+
+/// "outro"/"outros" (inclusive o padrão 'OUTROS' do banco) não viram tipo
+/// personalizado: são a própria opção [tipoOutro].
+bool ehTipoOutro(String tipo) =>
+    const {'OUTRO', 'OUTROS'}.contains(tipo.trim().toUpperCase());
