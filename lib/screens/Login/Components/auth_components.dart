@@ -31,10 +31,24 @@ class AuthScaffold extends StatelessWidget {
         children: [
           const Positioned.fill(child: _FundoAuth()),
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: _CardVidro(child: child),
+            // O card encolhe junto com a janela (proporção da referência:
+            // cerca de 70% da altura da tela), em vez de ocupar quase toda a
+            // altura em telas baixas ou com a escala do Windows.
+            child: LayoutBuilder(
+              builder: (context, c) => Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: (c.maxWidth - 32).clamp(0.0, double.infinity),
+                    maxHeight: c.maxHeight * 0.72,
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: StyleLogin.cardLargura,
+                      child: _CardVidro(child: child),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -47,12 +61,6 @@ class AuthScaffold extends StatelessWidget {
                   icone: Icons.dark_mode,
                   dica: 'Alternar tema',
                   onTap: onAlternarTema ?? () {},
-                ),
-                const SizedBox(width: 20),
-                _IconeAcao(
-                  icone: Icons.help,
-                  dica: 'Ajuda',
-                  onTap: onAjuda ?? () {},
                 ),
               ],
             ),
@@ -135,7 +143,10 @@ class CampoVidro extends StatelessWidget {
             hintText: hint,
             hintStyle: StyleLogin.hint,
             filled: true,
-            fillColor: Colors.white.withOpacity(0.10),
+            fillColor: StyleLogin.fundoCampo,
+            // Sem o véu do Material no hover/foco (escurecia o campo).
+            hoverColor: Colors.transparent,
+            focusColor: Colors.transparent,
             isDense: true,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 6, vertical: 17),
@@ -303,10 +314,6 @@ class _CardVidro extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: raio,
             gradient: StyleLogin.gradienteCard,
-            border: Border.all(
-              color: Colors.white.withOpacity(0.75),
-              width: 1.2,
-            ),
           ),
           child: child,
         ),
