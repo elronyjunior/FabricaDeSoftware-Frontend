@@ -41,8 +41,8 @@ class StyleProjetos {
       );
 
   // ---------------- Medidas ----------------
-  static const double sidebarLargura = 89;
-  static const double sidebarRaio = 45;
+  static const double sidebarLargura = 70; // menu fechado (mais fino)
+  static const double sidebarRaio = 35;
   static const double sidebarAbertaLargura = 400;
   static const double sidebarAbertaRaio = 28;
 
