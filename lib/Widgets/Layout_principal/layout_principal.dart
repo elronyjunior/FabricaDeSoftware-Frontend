@@ -305,8 +305,8 @@ class LayoutPrincipal extends StatelessWidget {
   static const double larguraBase = 1280;
 
   /// Espaço reservado para o menu fechado, na escala do Figma
-  /// (26 de margem + 89 do menu).
-  static const double recuoConteudo = 115;
+  /// (26 de margem + a largura do menu fechado).
+  static const double recuoConteudo = 26 + StyleProjetos.sidebarLargura;
 
   /// Altura mínima (na escala do Figma) para o menu caber sem cortar.
   static const double _alturaMinimaMenu = 640;

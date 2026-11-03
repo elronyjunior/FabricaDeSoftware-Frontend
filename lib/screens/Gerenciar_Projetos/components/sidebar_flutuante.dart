@@ -279,7 +279,10 @@ class _Linha extends StatelessWidget {
         children: [
           SizedBox(width: recuo - 8),
           inicio,
-          SizedBox(width: 75 - recuo - larguraInicio),
+          // Rótulo começa logo depois da coluna de ícones do menu fechado
+          // (a linha tem 8 de margem de cada lado).
+          SizedBox(
+              width: StyleProjetos.sidebarLargura - 8 - recuo - larguraInicio),
           Flexible(
             child: Opacity(
               opacity: visibilidade,
