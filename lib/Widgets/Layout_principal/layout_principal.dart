@@ -1,7 +1,7 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:fabrica_software_app/Widgets/Modal_conversacional/estilo_conversa.dart';
 import 'package:fabrica_software_app/providers/auth_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/components/sidebar_flutuante.dart';
@@ -212,6 +212,10 @@ class _CamadaModalView extends StatefulWidget {
 
 class _CamadaModalViewState extends State<_CamadaModalView>
     with SingleTickerProviderStateMixin {
+  /// Barreira escura por trás do modal (também cobre o menu lateral).
+  static const _barreira = Color(0xB8000000);
+  static const _desfoqueBarreira = 8.0;
+
   late final AnimationController _entrada = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 220),
@@ -236,12 +240,12 @@ class _CamadaModalViewState extends State<_CamadaModalView>
               child: AbsorbPointer(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(
-                    sigmaX: EstiloConversa.desfoqueBarreira * t,
-                    sigmaY: EstiloConversa.desfoqueBarreira * t,
+                    sigmaX: _desfoqueBarreira * t,
+                    sigmaY: _desfoqueBarreira * t,
                   ),
                   child: ColoredBox(
-                    color: EstiloConversa.barreira
-                        .withOpacity(EstiloConversa.barreira.opacity * t),
+                    color: _barreira
+                        .withOpacity(_barreira.opacity * t),
                   ),
                 ),
               ),
@@ -318,11 +322,17 @@ class LayoutPrincipal extends StatelessWidget {
         final fixo =
             observadorRotas.mostrarMenu && tela.width >= larguraDesktop;
         final e = escala(tela.width);
-        final recuo = fixo ? recuoConteudo * e : 0.0;
+        final dpr = midia.devicePixelRatio;
+        final recuo =
+            fixo ? (recuoConteudo * e * dpr).roundToDouble() / dpr : 0.0;
 
         // A estrutura da árvore é sempre a mesma, para o Navigator
         // nunca ser recriado ao mostrar/esconder o menu.
-        return DecoratedBox(
+        // AvisosIdv: mensagens do app no canto superior direito, por cima de
+        // todas as telas e diálogos.
+        return AvisosIdv(
+          key: AvisosIdv.global,
+          child: DecoratedBox(
           decoration:
               const BoxDecoration(gradient: StyleProjetos.gradienteFundo),
           child: Stack(
@@ -380,6 +390,7 @@ class LayoutPrincipal extends StatelessWidget {
                 ),
             ],
           ),
+        ),
         );
       },
     );
