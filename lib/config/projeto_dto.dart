@@ -20,6 +20,7 @@ class ProjetoDTO {
 
   DateTime? dataInicio;
   DateTime? dataFinalPrevista;
+  DateTime? dataFinal; // conclusão real (mantida ao editar)
   double? orcamentoEstimado;
   String? complexidade;
 
@@ -41,6 +42,7 @@ class ProjetoDTO {
     metodologia = null;
     cliente = null;
     responsavel = null; // <--- Limpar
+    dataFinal = null;
     escopo = null;
     tecnologias = [];
     equipe = [];
@@ -66,6 +68,7 @@ class ProjetoDTO {
     escopo = p.escopo;
     dataInicio = p.dataInicio;
     dataFinalPrevista = p.dataFinalPrevisto;
+    dataFinal = p.dataFinal;
     orcamentoEstimado = p.orcamentoEstimado;
     complexidade = p.complexidade?.name; 
 
@@ -122,7 +125,8 @@ class ProjetoDTO {
         (opcao) => opcao.toUpperCase() == valorBanco.toUpperCase()
       );
     } catch (e) {
-      return null; 
+      // Fora da lista (ex.: 'AI'): mantém o valor para a tela mostrar.
+      return valorBanco;
     }
   }
 }
