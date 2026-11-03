@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 // --- Ficheiro: lib/widgets/endereco_modal.dart ---
 
 import 'package:fabrica_software_app/providers/endereco_provider.dart';
@@ -113,10 +114,7 @@ class _EnderecoModalState extends State<EnderecoModal> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erro ao salvar endereço: $e'),
-        backgroundColor: Colors.red,
-      ));
+      avisar(context, 'Erro ao salvar endereço: $e', tipo: TipoAviso.erro);
     } finally {
       if (mounted) setState(() { _isModalLoading = false; });
     }

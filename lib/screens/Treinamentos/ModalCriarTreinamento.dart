@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -114,18 +115,14 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
         if (mounted) {
           Navigator.pop(context);
           widget.onSuccess();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(isEdicao ? "Treinamento atualizado!" : "Treinamento criado!"), backgroundColor: Colors.green)
-          );
+          avisar(context, isEdicao ? "Treinamento atualizado!" : "Treinamento criado!", tipo: TipoAviso.sucesso);
         }
       } else {
         throw Exception("Erro no backend: ${response.body}");
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erro: $e"), backgroundColor: Colors.red)
-        );
+        avisar(context, "Erro: $e", tipo: TipoAviso.erro);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

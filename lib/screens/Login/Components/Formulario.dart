@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
@@ -99,9 +100,7 @@ class _FormularioLoginState extends State<FormularioLogin> {
                                     final email = _emailController.text.trim();
                                     final senha = _senhaController.text;
                                     if (email.isEmpty || senha.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Preencha email e senha')),
-                                      );
+                                      avisar(context, 'Preencha email e senha', tipo: TipoAviso.info);
                                       return;
                                     }
 
@@ -120,16 +119,12 @@ class _FormularioLoginState extends State<FormularioLogin> {
                                           );
                                         } else {
                                           if (mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text(auth.error ?? 'Falha no login')),
-                                            );
+                                            avisar(context, auth.error ?? 'Falha no login', tipo: TipoAviso.erro);
                                           }
                                         }
                                     } catch (e) {
                                       if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Erro no login: ${e.toString()}')),
-                                        );
+                                        avisar(context, 'Erro no login: ${e.toString()}', tipo: TipoAviso.erro);
                                       }
                                     } finally {
                                       if (mounted) setState(() => _isLoading = false);

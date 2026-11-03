@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -260,9 +261,7 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro ao abrir o Google Docs'), backgroundColor: Colors.red),
-        );
+        avisar(context, 'Erro ao abrir o Google Docs', tipo: TipoAviso.erro);
       }
     }
   }
@@ -276,9 +275,7 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
       await Printing.sharePdf(bytes: bytes, filename: '${widget.nomeArquivo}.pdf');
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro ao gerar o PDF'), backgroundColor: Colors.red),
-        );
+        avisar(context, 'Erro ao gerar o PDF', tipo: TipoAviso.erro);
       }
     }
   }
@@ -315,12 +312,7 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
   Future<void> _salvar(BuildContext context, DocumentoEditorProvider provider) async {
     final sucesso = await provider.salvar();
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(sucesso ? 'Documento salvo!' : 'Erro ao salvar documento'),
-        backgroundColor: sucesso ? Colors.green : Colors.red,
-      ),
-    );
+    avisar(context, sucesso ? 'Documento salvo!' : 'Erro ao salvar documento', tipo: sucesso ? TipoAviso.sucesso : TipoAviso.erro);
   }
 
   @override
@@ -539,12 +531,7 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
     final sucesso = await provider.retrabalharSelecionadasComIA(instrucao);
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(sucesso ? 'Seções reescritas! Revise e clique em Salvar.' : 'Erro ao retrabalhar seções com IA'),
-        backgroundColor: sucesso ? Colors.green : Colors.red,
-      ),
-    );
+    avisar(context, sucesso ? 'Seções reescritas! Revise e clique em Salvar.' : 'Erro ao retrabalhar seções com IA', tipo: sucesso ? TipoAviso.sucesso : TipoAviso.erro);
   }
 
   Widget _buildControleZoom() {
