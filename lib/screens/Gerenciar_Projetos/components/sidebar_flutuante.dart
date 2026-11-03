@@ -71,8 +71,6 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
     _controle.reverse();
   }
 
-  void _alternar() => _controle.value > 0.5 ? _fechar() : _controle.forward();
-
   /// Fecha o menu e executa a ação do item tocado.
   void _executar(VoidCallback? acao) {
     _fechar();
@@ -103,22 +101,19 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
         StyleProjetos.sidebarLargura, StyleProjetos.sidebarAbertaLargura, t)!;
     final raio = BorderRadius.circular(lerpDouble(
         StyleProjetos.sidebarRaio, StyleProjetos.sidebarAbertaRaio, t)!);
-    final desfoque = lerpDouble(16, 30, t)!;
+    final desfoque = lerpDouble(16, 28, t)!;
 
-    // Vidro: gradiente translúcido (claro fechado, fumê aberto)
+    // Vidro claro translúcido (fechado e aberto): gradiente branco suave
     // + desfoque do que está por trás + borda clara.
     final gradiente = LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        Color.lerp(Colors.white.withOpacity(0.60),
-            StyleProjetos.vidroEscuro.withOpacity(0.58), t)!,
-        Color.lerp(Colors.white.withOpacity(0.35),
-            StyleProjetos.vidroEscuro.withOpacity(0.40), t)!,
+        Colors.white.withOpacity(lerpDouble(0.60, 0.55, t)!),
+        Colors.white.withOpacity(lerpDouble(0.35, 0.30, t)!),
       ],
     );
-    final borda = Color.lerp(
-        Colors.white.withOpacity(0.9), Colors.white.withOpacity(0.32), t)!;
+    final borda = Colors.white.withOpacity(lerpDouble(0.9, 0.75, t)!);
 
     return Container(
       width: largura,
@@ -126,7 +121,7 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
         borderRadius: raio,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1C1F3A).withOpacity(0.08 + 0.10 * t),
+            color: const Color(0xFF1C1F3A).withOpacity(0.08 + 0.06 * t),
             blurRadius: 14 + 16 * t,
             offset: const Offset(0, 6),
           ),
@@ -164,9 +159,10 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
                       estiloRotulo: GoogleFonts.inter(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: StyleProjetos.texto,
                       ),
-                      onTap: _alternar,
+                      // Só a marca: não é botão (o item ativo é o ícone
+                      // laranja), então não tem toque nem destaque.
                     ),
                     const SizedBox(height: 31),
                     for (var i = 0; i < SidebarFlutuante.itens.length; i++) ...[
@@ -244,7 +240,7 @@ class _Item extends StatelessWidget {
       estiloRotulo: GoogleFonts.inter(
         fontSize: 17,
         fontWeight: negrito ? FontWeight.w600 : FontWeight.w400,
-        color: Colors.white,
+        color: ativo ? StyleProjetos.laranja : StyleProjetos.texto,
       ),
       onTap: onTap,
     );
@@ -277,40 +273,48 @@ class _Linha extends StatelessWidget {
     final visibilidade =
         Curves.easeOut.transform(((t - 0.35) / 0.65).clamp(0.0, 1.0));
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        hoverColor: Colors.white.withOpacity(0.08 * t),
-        splashColor: Colors.white.withOpacity(0.12),
-        highlightColor: Colors.white.withOpacity(0.06),
-        child: SizedBox(
-          height: larguraInicio + 12,
-          child: Row(
-            children: [
-              SizedBox(width: recuo - 8),
-              inicio,
-              SizedBox(width: 75 - recuo - larguraInicio),
-              Flexible(
-                child: Opacity(
-                  opacity: visibilidade,
-                  child: Transform.translate(
-                    offset: Offset(-10 * (1 - visibilidade), 0),
-                    child: Text(
-                      rotulo,
-                      maxLines: 1,
-                      softWrap: false,
-                      overflow: TextOverflow.clip,
-                      style: estiloRotulo,
-                    ),
-                  ),
+    final conteudo = SizedBox(
+      height: larguraInicio + 12,
+      child: Row(
+        children: [
+          SizedBox(width: recuo - 8),
+          inicio,
+          SizedBox(width: 75 - recuo - larguraInicio),
+          Flexible(
+            child: Opacity(
+              opacity: visibilidade,
+              child: Transform.translate(
+                offset: Offset(-10 * (1 - visibilidade), 0),
+                child: Text(
+                  rotulo,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.clip,
+                  style: estiloRotulo,
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      // Sem ação (ex.: a marca da Tegra): só o conteúdo, sem toque nem destaque.
+      child: onTap == null
+          ? conteudo
+          : InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(12),
+              hoverColor: StyleProjetos.azulEscuro.withOpacity(0.06 * t),
+              splashColor: StyleProjetos.azulEscuro.withOpacity(0.08),
+              highlightColor: StyleProjetos.azulEscuro.withOpacity(0.04),
+              // Foco só aparece com o menu aberto (o item ativo já é o
+              // ícone laranja; fechado, não fica uma caixa cinza no ícone).
+              focusColor: StyleProjetos.azulEscuro.withOpacity(0.06 * t),
+              child: conteudo,
+            ),
     );
   }
 }
