@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/providers/projetos_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,7 @@ const _opcoesStatus = ['Em processo', 'Atrasado', 'Concluído'];
 const _bordaPilula = Color(0x590F1030);
 
 TextStyle _fonte(
-        {double tamanho = 15,
+        {double tamanho = 16,
         FontWeight peso = FontWeight.w400,
         Color cor = StyleProjetos.texto}) =>
     GoogleFonts.inter(fontSize: tamanho, fontWeight: peso, color: cor);
@@ -109,7 +110,7 @@ class PopoverFiltros extends StatefulWidget {
 }
 
 class _PopoverFiltrosState extends State<PopoverFiltros> {
-  static const _largura = 420.0;
+  static const _largura = 480.0;
 
   late final ProjetosProvider _provider = context.read<ProjetosProvider>();
   late Set<String> _status = {..._provider.filtros.status};
@@ -120,6 +121,12 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
   final _buscaMembro = TextEditingController();
   final _focoCliente = FocusNode();
   final _focoMembro = FocusNode();
+
+  /// Campo e sugestões no mesmo grupo de toque: clicar numa sugestão não
+  /// tira o foco do campo antes do clique valer.
+  final _grupoCliente = Object();
+  final _grupoMembro = Object();
+  bool _calendarioAberto = false;
 
   @override
   void initState() {
@@ -162,34 +169,11 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
     _provider.aplicarFiltros(FiltrosProjeto.vazio);
   }
 
-  Future<void> _escolherData() async {
-    final hoje = DateTime.now();
-    final escolhida = await showDatePicker(
-      context: context,
-      initialDate: _conclusaoAte ?? hoje,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(hoje.year + 20),
-      helpText: 'Conclusão até',
-      builder: (context, filho) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: Theme.of(context).colorScheme.copyWith(
-                primary: StyleProjetos.azulEscuro,
-                onPrimary: Colors.white,
-                surfaceTint: Colors.transparent,
-              ),
-        ),
-        child: filho!,
-      ),
-    );
-    if (escolhida != null) setState(() => _conclusaoAte = escolhida);
-  }
-
   @override
   Widget build(BuildContext context) {
     final tela = MediaQuery.of(context).size;
-    final esquerda = widget.ancora.left
-        .clamp(16.0, (tela.width - _largura - 16).clamp(16.0, tela.width));
-    final topo = widget.ancora.bottom + 12;
+    // Como o painel de Novo projeto: preso à direita, quase da altura toda.
+    final largura = (tela.width - 32).clamp(0.0, _largura);
 
     return Stack(
       children: [
@@ -201,13 +185,11 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
           ),
         ),
         Positioned(
-          left: esquerda,
-          top: topo,
-          width: _largura,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: tela.height - topo - 16),
-            child: _cartao(),
-          ),
+          top: 16,
+          bottom: 16,
+          right: 16,
+          width: largura,
+          child: _cartao(),
         ),
       ],
     );
@@ -232,35 +214,40 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
               borderRadius: BorderRadius.circular(28),
               side: BorderSide(color: Colors.white.withOpacity(0.9)),
             ),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(28, 20, 20, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _cabecalho(),
-                  const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 22, 20, 18),
+                  child: _cabecalho(),
+                ),
+                const Divider(height: 1, color: Color(0x1F0F1030)),
+                // Campos rolam; o rodapé fica sempre no fim do painel.
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(32, 26, 32, 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _linhaStatus(),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         _pilulaData(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         _pilulaTipo(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         _pilulaCliente(),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         _pilulaMembros(),
-                        const SizedBox(height: 22),
-                        _rodape(),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                const Divider(height: 1, color: Color(0x1F0F1030)),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 32, 18),
+                  child: _rodape(),
+                ),
+              ],
             ),
           ),
         ),
@@ -272,7 +259,7 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
         children: [
           Expanded(
             child: Text('Filtrar projetos',
-                style: _fonte(tamanho: 17, peso: FontWeight.w600)),
+                style: _fonte(tamanho: 22, peso: FontWeight.w700)),
           ),
           IconButton(
             tooltip: 'Fechar',
@@ -285,12 +272,12 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
 
   Widget _linhaStatus() => Row(
         children: [
-          Text('Status:', style: _fonte(peso: FontWeight.w500)),
-          const SizedBox(width: 10),
+          Text('Status:', style: _fonte(tamanho: 16, peso: FontWeight.w500)),
+          const SizedBox(width: 12),
           Expanded(
             child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 for (final s in _opcoesStatus)
                   _ChipStatus(
@@ -307,8 +294,32 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
         ],
       );
 
-  Widget _pilulaData() => _Pilula(
-        aoTocar: _escolherData,
+  Widget _pilulaData() => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _pilulaDataCampo(),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _calendarioAberto
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: CalendarioDiaIdv(
+                      selecionado: _conclusaoAte,
+                      aoEscolher: (d) => setState(() {
+                        _conclusaoAte = d;
+                        if (d != null) _calendarioAberto = false;
+                      }),
+                    ),
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+        ],
+      );
+
+  Widget _pilulaDataCampo() => _Pilula(
+        aoTocar: () => setState(() => _calendarioAberto = !_calendarioAberto),
         icone: Icons.calendar_month_rounded,
         filho: Text.rich(
           TextSpan(children: [
@@ -382,17 +393,18 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
             rotulo: 'Cliente: ',
             controle: _cliente,
             foco: _focoCliente,
+            grupo: _grupoCliente,
             hint: 'todos',
             aoMudar: (_) => setState(() {}),
+            aoEnviar: () {
+              if (sugestoes.isNotEmpty) _escolherCliente(sugestoes.first);
+            },
           ),
         ),
         if (sugestoes.isNotEmpty)
-          _Sugestoes(
-            itens: sugestoes,
-            aoEscolher: (c) => setState(() {
-              _cliente.text = c;
-              _focoCliente.unfocus();
-            }),
+          TapRegion(
+            groupId: _grupoCliente,
+            child: _Sugestoes(itens: sugestoes, aoEscolher: _escolherCliente),
           ),
       ],
     );
@@ -409,6 +421,12 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
             .take(5)
             .toList();
 
+    void escolher(MembroProjeto m) => setState(() {
+          _membros = {..._membros, m.id};
+          _buscaMembro.clear();
+          _focoMembro.requestFocus(); // continua escolhendo
+        });
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -419,18 +437,22 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
             rotulo: 'Membros: ',
             controle: _buscaMembro,
             foco: _focoMembro,
-            hint: '',
+            grupo: _grupoMembro,
+            hint: 'pesquisar pessoa',
             aoMudar: (_) => setState(() {}),
+            aoEnviar: () {
+              if (sugestoes.isNotEmpty) escolher(sugestoes.first);
+            },
           ),
         ),
         if (sugestoes.isNotEmpty)
-          _Sugestoes(
-            itens: [for (final m in sugestoes) m.nome],
-            aoEscolher: (nome) => setState(() {
-              final m = sugestoes.firstWhere((m) => m.nome == nome);
-              _membros = {..._membros, m.id};
-              _buscaMembro.clear();
-            }),
+          TapRegion(
+            groupId: _grupoMembro,
+            child: _Sugestoes(
+              itens: [for (final m in sugestoes) m.nome],
+              aoEscolher: (nome) =>
+                  escolher(sugestoes.firstWhere((m) => m.nome == nome)),
+            ),
           ),
         if (_membros.isNotEmpty) ...[
           const SizedBox(height: 10),
@@ -451,6 +473,12 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
     );
   }
 
+  void _escolherCliente(String cliente) => setState(() {
+        _cliente.text = cliente;
+        _cliente.selection = TextSelection.collapsed(offset: cliente.length);
+        _focoCliente.unfocus();
+      });
+
   Widget _rodape() => Row(
         children: [
           TextButton.icon(
@@ -468,7 +496,7 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
               backgroundColor: StyleProjetos.azulEscuro,
               foregroundColor: Colors.white,
               elevation: 0,
-              minimumSize: const Size(130, 44),
+              minimumSize: const Size(150, 50),
               padding: const EdgeInsets.symmetric(horizontal: 20),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
@@ -493,8 +521,8 @@ class _Pilula extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final conteudo = Container(
-      height: 46,
-      padding: const EdgeInsets.only(left: 18, right: 14),
+      height: 54,
+      padding: const EdgeInsets.only(left: 20, right: 16),
       decoration: ShapeDecoration(
         color: Colors.white.withOpacity(0.55),
         shape: const StadiumBorder(side: BorderSide(color: _bordaPilula)),
@@ -521,15 +549,19 @@ class _CampoNaPilula extends StatelessWidget {
     required this.rotulo,
     required this.controle,
     required this.foco,
+    required this.grupo,
     required this.hint,
     required this.aoMudar,
+    required this.aoEnviar,
   });
 
   final String rotulo;
   final TextEditingController controle;
   final FocusNode foco;
+  final Object grupo;
   final String hint;
   final ValueChanged<String> aoMudar;
+  final VoidCallback aoEnviar;
 
   @override
   Widget build(BuildContext context) {
@@ -540,7 +572,11 @@ class _CampoNaPilula extends StatelessWidget {
           child: TextField(
             controller: controle,
             focusNode: foco,
+            groupId: grupo,
             onChanged: aoMudar,
+            // Enter escolhe a primeira sugestão.
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => aoEnviar(),
             maxLines: 1,
             style: _fonte(),
             strutStyle: const StrutStyle(forceStrutHeight: true, height: 1.2),
@@ -615,7 +651,7 @@ class _ChipStatus extends StatelessWidget {
         onTap: aoTocar,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: ShapeDecoration(
             color: marcado
                 ? StyleProjetos.laranja.withOpacity(0.08)
@@ -628,7 +664,7 @@ class _ChipStatus extends StatelessWidget {
           child: Text(
             rotulo,
             style: _fonte(
-              tamanho: 13,
+              tamanho: 14,
               peso: marcado ? FontWeight.w600 : FontWeight.w400,
               cor: marcado
                   ? StyleProjetos.laranja

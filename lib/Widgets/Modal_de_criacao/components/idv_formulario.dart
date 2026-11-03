@@ -1418,3 +1418,141 @@ class AbaAssistenteIdv extends StatelessWidget {
     );
   }
 }
+
+// =====================================================================
+// Calendário de um dia, aberto no próprio formulário (filtro de projetos)
+// =====================================================================
+
+class CalendarioDiaIdv extends StatefulWidget {
+  const CalendarioDiaIdv({
+    super.key,
+    required this.selecionado,
+    required this.aoEscolher,
+  });
+
+  final DateTime? selecionado;
+  final ValueChanged<DateTime?> aoEscolher;
+
+  @override
+  State<CalendarioDiaIdv> createState() => _CalendarioDiaIdvState();
+}
+
+class _CalendarioDiaIdvState extends State<CalendarioDiaIdv> {
+  late DateTime _mes;
+
+  @override
+  void initState() {
+    super.initState();
+    final base = widget.selecionado ?? DateTime.now();
+    _mes = DateTime(base.year, base.month);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primeiro = DateTime(_mes.year, _mes.month, 1);
+    final diasNoMes = DateTime(_mes.year, _mes.month + 1, 0).day;
+    final deslocamento = primeiro.weekday % 7; // domingo = 0
+    final hoje = _dia(DateTime.now());
+    final escolhido =
+        widget.selecionado == null ? null : _dia(widget.selecionado!);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: CoresIdv.borda),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: () =>
+                    setState(() => _mes = DateTime(_mes.year, _mes.month - 1)),
+                icon: const Icon(Icons.chevron_left_rounded,
+                    color: CoresIdv.texto),
+              ),
+              Expanded(
+                child: Text('${_meses[_mes.month - 1]} ${_mes.year}',
+                    textAlign: TextAlign.center,
+                    style: fonteIdv(tamanho: 15, peso: FontWeight.w600)),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                onPressed: () =>
+                    setState(() => _mes = DateTime(_mes.year, _mes.month + 1)),
+                icon: const Icon(Icons.chevron_right_rounded,
+                    color: CoresIdv.texto),
+              ),
+            ],
+          ),
+          GridView.count(
+            crossAxisCount: 7,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 1.25,
+            children: [
+              for (final d in _diasSemana)
+                Center(
+                    child: Text(d,
+                        style: fonteIdv(
+                            tamanho: 12,
+                            peso: FontWeight.w600,
+                            cor: CoresIdv.textoSecundario))),
+              for (var i = 0; i < deslocamento; i++) const SizedBox.shrink(),
+              for (var d = 1; d <= diasNoMes; d++)
+                _dia_(DateTime(_mes.year, _mes.month, d), hoje, escolhido),
+            ],
+          ),
+          if (widget.selecionado != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => widget.aoEscolher(null),
+                style: TextButton.styleFrom(
+                    foregroundColor: CoresIdv.textoSecundario),
+                child: Text('Limpar data',
+                    style: fonteIdv(
+                        tamanho: 13,
+                        peso: FontWeight.w600,
+                        cor: CoresIdv.textoSecundario)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dia_(DateTime dia, DateTime hoje, DateTime? escolhido) {
+    final marcado = dia == escolhido;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => widget.aoEscolher(dia),
+        child: Center(
+          child: Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: marcado ? CoresIdv.azul : Colors.transparent,
+              shape: BoxShape.circle,
+              border: dia == hoje && !marcado
+                  ? Border.all(color: CoresIdv.laranja, width: 1.5)
+                  : null,
+            ),
+            child: Text('${dia.day}',
+                style: fonteIdv(
+                  tamanho: 13,
+                  peso: marcado ? FontWeight.w700 : FontWeight.w500,
+                  cor: marcado ? Colors.white : CoresIdv.texto,
+                )),
+          ),
+        ),
+      ),
+    );
+  }
+}
