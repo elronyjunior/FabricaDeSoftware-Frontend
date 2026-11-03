@@ -1,7 +1,5 @@
-import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_de_criacao.dart';
-import 'package:fabrica_software_app/config/projeto_dto.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_novo_projeto.dart';
 import 'package:fabrica_software_app/models/projeto.dart';
-import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.dart';
 import 'package:fabrica_software_app/providers/projetos_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/components/visualizador_Projetos_Screen.dart';
@@ -61,15 +59,8 @@ class _ProjectCardState extends State<ProjectCard> {
   }
 
   void _editar() {
-    projetoDraft.loadFromModel(widget.projeto);
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => ChangeNotifierProvider(
-        create: (_) => ModalCriacaoProjetoProvider()..iniciarEdicao(),
-        child: const ModalDeCriacao(),
-      ),
-    );
+    // Mesmo painel lateral da criação, só com as informações gerais.
+    abrirModalNovoProjeto(context, projeto: widget.projeto);
   }
 
   void _excluir() {
