@@ -43,15 +43,18 @@ class PaginaGestao<T> extends StatefulWidget {
     required this.tituloLista,
     required this.singular,
     required this.plural,
+    this.feminino = false,
     required this.itens,
     required this.carregando,
     required this.erro,
     required this.aoRecarregar,
     required this.nome,
     required this.textoBusca,
-    required this.colunas,
-    required this.celulas,
-    required this.acoes,
+    this.colunas = const [],
+    this.celulas,
+    this.acoes,
+    this.card,
+    this.colunasGrade = 3,
     this.rotuloFiltro,
     this.valorFiltro,
   });
@@ -64,6 +67,9 @@ class PaginaGestao<T> extends StatefulWidget {
   /// "cliente" / "clientes" (contador e mensagens).
   final String singular;
   final String plural;
+
+  /// Concorda os textos com o item ("encontradas", "Nenhuma").
+  final bool feminino;
 
   final List<T> itens;
   final bool carregando;
@@ -79,8 +85,15 @@ class PaginaGestao<T> extends StatefulWidget {
   final List<ColunaGestao> colunas;
 
   /// Uma célula por coluna, menos a de ações (a última, desenhada aqui).
-  final List<Widget> Function(T item) celulas;
-  final AcoesGestao Function(T item) acoes;
+  final List<Widget> Function(T item)? celulas;
+  final AcoesGestao Function(T item)? acoes;
+
+  /// Modo grade: em vez da tabela, desenha um card por item (3 por linha
+  /// no desktop, como os cards de Projetos).
+  final Widget Function(T item)? card;
+
+  /// Máximo de cards por linha na grade (menos em telas estreitas).
+  final int colunasGrade;
 
   /// Filtro por um campo (ex.: "Setor"): as opções vêm dos próprios itens.
   final String? rotuloFiltro;
@@ -100,6 +113,12 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
   _Ordem _ordem = _Ordem.padrao;
   Set<String> _filtro = {};
   bool _rolado = false;
+
+  /// Card com o mouse por cima (desenhado por cima dos vizinhos).
+  int? _cardEmCima;
+
+  String get _o => widget.feminino ? 'a' : 'o';
+  String get _a => widget.feminino ? 'a' : '';
 
   @override
   void initState() {
@@ -234,7 +253,7 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
               const SizedBox(width: 16),
               Padding(
                 padding: EdgeInsets.only(top: desktop ? 10 : 0),
-                child: _BotaoNovo(
+                child: BotaoNovoGestao(
                     rotulo: widget.rotuloNovo, aoTocar: widget.aoNovo),
               ),
             ],
@@ -246,8 +265,11 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
           const SizedBox(height: 22),
 
           // ---------------- Tabela ----------------
-          _cabecalhoTabela(),
-          const Divider(height: 1, color: Color(0x1F0F1030)),
+          if (widget.card == null) ...[
+            _cabecalhoTabela(),
+            const Divider(height: 1, color: Color(0x1F0F1030)),
+          ] else
+            const SizedBox(height: 9),
           Expanded(child: _lista(itens)),
         ],
       ),
@@ -257,8 +279,8 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
   Widget _barraFerramentas(int total) {
     final contador = Text(
       total == 1
-          ? '1 ${widget.singular} encontrado'
-          : '$total ${widget.plural} encontrados',
+          ? '1 ${widget.singular} encontrad$_o'
+          : '$total ${widget.plural} encontrad${_o}s',
       style: StyleProjetos.contador,
     );
 
@@ -303,7 +325,7 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
       ],
     );
 
-    final pesquisa = _CampoPesquisa(
+    final pesquisa = CampoPesquisaGestao(
       controle: _busca,
       aoMudar: (_) => setState(_voltarAoTopo),
     );
@@ -373,13 +395,13 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
     }
     if (widget.erro != null) {
       return _mensagem(
-          'Não foi possível carregar os ${widget.plural}: ${widget.erro}',
+          'Não foi possível carregar ${_o}s ${widget.plural}: ${widget.erro}',
           comBotao: true);
     }
     if (itens.isEmpty) {
       return _mensagem(widget.itens.isEmpty
-          ? 'Nenhum ${widget.singular} cadastrado.'
-          : 'Nenhum ${widget.singular} encontrado. Ajuste a pesquisa ou o filtro.');
+          ? 'Nenhum$_a ${widget.singular} cadastrad$_o.'
+          : 'Nenhum$_a ${widget.singular} encontrad$_o. Ajuste a pesquisa ou o filtro.');
     }
 
     final visiveis = itens.take(_quantidade).toList();
@@ -396,7 +418,7 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
     }
 
     // Ao rolar, as linhas esmaecem na borda de cima (como em Projetos).
-    return TweenAnimationBuilder<double>(
+    final lista = TweenAnimationBuilder<double>(
       tween: Tween(end: _rolado ? 1 : 0),
       duration: const Duration(milliseconds: 220),
       builder: (context, t, lista) => ShaderMask(
@@ -409,34 +431,117 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
         ).createShader(area),
         child: lista,
       ),
-      child: ListView.builder(
-        controller: _rolagem,
-        padding: const EdgeInsets.only(bottom: 28),
-        itemCount: visiveis.length + 1,
-        itemBuilder: (context, i) {
-          if (i == visiveis.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: temMais
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: StyleProjetos.laranja))
-                    : const SizedBox.shrink(),
-              ),
-            );
-          }
-          final item = visiveis[i];
-          return _LinhaGestao(
-            colunas: widget.colunas,
-            celulas: widget.celulas(item),
-            acoes: widget.acoes(item),
-          );
-        },
+      child: widget.card == null
+          ? _tabela(visiveis, temMais)
+          : _grade(visiveis, temMais),
+    );
+    if (widget.card == null) return lista;
+
+    // Na grade, a área de rolagem é um pouco maior que o espaço dela (folga
+    // dos lados e em cima, com o mesmo padding por dentro): o card ampliado
+    // no hover e a sombra dele não são cortados (igual a Projetos).
+    return LayoutBuilder(
+      builder: (context, c) => OverflowBox(
+        alignment: Alignment.bottomCenter,
+        minWidth: c.maxWidth + _folgaGrade * 2,
+        maxWidth: c.maxWidth + _folgaGrade * 2,
+        minHeight: c.maxHeight + _folgaGrade,
+        maxHeight: c.maxHeight + _folgaGrade,
+        child: lista,
       ),
     );
+  }
+
+  static const _folgaGrade = 22.0;
+  static const _espacoGrade = 24.0;
+
+  Widget _rodapeCarregando(bool temMais) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: temMais
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: StyleProjetos.laranja))
+              : const SizedBox.shrink(),
+        ),
+      );
+
+  Widget _tabela(List<T> visiveis, bool temMais) {
+    return ListView.builder(
+      controller: _rolagem,
+      padding: const EdgeInsets.only(bottom: 28),
+      itemCount: visiveis.length + 1,
+      itemBuilder: (context, i) {
+        if (i == visiveis.length) return _rodapeCarregando(temMais);
+        final item = visiveis[i];
+        return _LinhaGestao(
+          colunas: widget.colunas,
+          celulas: widget.celulas?.call(item) ?? const [],
+          acoes: widget.acoes?.call(item) ?? const AcoesGestao(),
+        );
+      },
+    );
+  }
+
+  /// Cards em linhas de 3 (2 ou 1 em telas menores), como em Projetos.
+  Widget _grade(List<T> visiveis, bool temMais) {
+    return LayoutBuilder(builder: (context, c) {
+      final largura = c.maxWidth - _folgaGrade * 2;
+      // Cada card precisa de pelo menos 240 px; no máximo [colunasGrade].
+      final colunas = ((largura + _espacoGrade) / (240 + _espacoGrade))
+          .floor()
+          .clamp(1, widget.colunasGrade);
+      final larguraCard = (largura - _espacoGrade * (colunas - 1)) / colunas;
+      final linhas = (visiveis.length / colunas).ceil();
+      return ListView.builder(
+        controller: _rolagem,
+        padding: const EdgeInsets.fromLTRB(
+            _folgaGrade, _folgaGrade, _folgaGrade, 28),
+        itemCount: linhas + 1,
+        itemBuilder: (context, i) {
+          if (i == linhas) return _rodapeCarregando(temMais);
+          final indices = [
+            for (var col = 0; col < colunas; col++)
+              if (i * colunas + col < visiveis.length) i * colunas + col,
+          ];
+          // O card em hover vai para o fim (desenhado por cima dos vizinhos).
+          final ordem = [
+            ...indices.where((k) => k != _cardEmCima),
+            ...indices.where((k) => k == _cardEmCima),
+          ];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: _espacoGrade),
+            child: SizedBox(
+              height: StyleProjetos.cardAltura,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  for (final k in ordem)
+                    Positioned(
+                      key: ValueKey(widget.nome(visiveis[k]) + '#$k'),
+                      left: (k % colunas) * (larguraCard + _espacoGrade),
+                      top: 0,
+                      width: larguraCard,
+                      height: StyleProjetos.cardAltura,
+                      child: MouseRegion(
+                        onEnter: (_) => setState(() => _cardEmCima = k),
+                        onExit: (_) {
+                          if (_cardEmCima == k) {
+                            setState(() => _cardEmCima = null);
+                          }
+                        },
+                        child: widget.card!(visiveis[k]),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    });
   }
 
   Widget _mensagem(String texto, {bool comBotao = false}) => Center(
@@ -469,7 +574,6 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
           _voltarAoTopo();
         }),
       ),
-      fundoClaro: true,
     );
   }
 }
@@ -700,8 +804,9 @@ class EtiquetaGestao extends StatelessWidget {
 // Barra: botão novo, filtro, pesquisa, ferramentas
 // =====================================================================
 
-class _BotaoNovo extends StatelessWidget {
-  const _BotaoNovo({required this.rotulo, required this.aoTocar});
+class BotaoNovoGestao extends StatelessWidget {
+  const BotaoNovoGestao(
+      {super.key, required this.rotulo, required this.aoTocar});
   final String rotulo;
   final VoidCallback aoTocar;
 
@@ -784,16 +889,17 @@ class _BotaoFiltro extends StatelessWidget {
   }
 }
 
-class _CampoPesquisa extends StatefulWidget {
-  const _CampoPesquisa({required this.controle, required this.aoMudar});
+class CampoPesquisaGestao extends StatefulWidget {
+  const CampoPesquisaGestao(
+      {super.key, required this.controle, required this.aoMudar});
   final TextEditingController controle;
   final ValueChanged<String> aoMudar;
 
   @override
-  State<_CampoPesquisa> createState() => _CampoPesquisaState();
+  State<CampoPesquisaGestao> createState() => _CampoPesquisaGestaoState();
 }
 
-class _CampoPesquisaState extends State<_CampoPesquisa> {
+class _CampoPesquisaGestaoState extends State<CampoPesquisaGestao> {
   final _foco = FocusNode();
 
   @override
@@ -988,7 +1094,8 @@ class _PainelFiltroState extends State<_PainelFiltro> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                 child: Material(
-                  color: Colors.white.withOpacity(0.82),
+                  // Opaco: o fundo escuro da camada não muda a cor do painel.
+                  color: const Color(0xFFF8F9FC),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
