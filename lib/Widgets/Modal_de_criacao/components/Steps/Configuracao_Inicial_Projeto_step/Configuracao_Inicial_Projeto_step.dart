@@ -8,6 +8,7 @@ import 'components.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/config/projeto_dto.dart';
 import 'package:fabrica_software_app/services/api_service.dart';
+import 'package:fabrica_software_app/providers/projetos_provider.dart';
 
 class ConfiguracaoInicialProjetoStep extends ModalStep {
   @override
@@ -94,14 +95,14 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
   List<Map<String, dynamic>> _tecnologiasSelecionadas = [];
 
   String? _tipoSelecionado;
-  final List<String> _opcoesTipo = [
-    'Web',
-    'Mobile',
-    'Desktop',
-    'API',
-    'Híbrido',
-    'Outro'
+  // Mesma lista do filtro: padrão + personalizados já salvos + "Outro".
+  late final List<String> _opcoesTipo = [
+    ...context.read<ProjetosProvider>().tiposDisponiveis
   ];
+
+  /// Tipo escrito quando a opção "Outro" está escolhida.
+  final _tipoOutroCtrl = TextEditingController();
+  bool get _escolheuOutro => _tipoSelecionado == tipoOutro;
 
   String? _modeloSelecionado;
   final List<String> _opcoesModelo = [
@@ -134,6 +135,7 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
     _nomeCtrl.dispose();
     _descCtrl.dispose();
     _metodologiaCtrl.dispose();
+    _tipoOutroCtrl.dispose();
     super.dispose();
   }
 
@@ -227,6 +229,18 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
       _showError('Selecione o Tipo do projeto.');
       return false;
     }
+    if (_escolheuOutro) {
+      final escrito =
+          _tipoOutroCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+      if (escrito.isEmpty) {
+        _showError('Escreva qual é o tipo do projeto.');
+        return false;
+      }
+      // Se já existe na lista (com outra caixa), usa o que já existe.
+      projetoDraft.tipo = _opcoesTipo.firstWhere(
+          (t) => t.toUpperCase() == escrito.toUpperCase() && t != tipoOutro,
+          orElse: () => escrito);
+    }
     if (_clienteSelecionado == null) {
       _showError('Selecione um Cliente.');
       return false;
@@ -313,7 +327,12 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
                     rotulo: (t) => t,
                     aoMudar: (val) => setState(() {
                       _tipoSelecionado = val;
-                      projetoDraft.tipo = val;
+                      // "Outro": o tipo é o texto escrito no campo abaixo.
+                      projetoDraft.tipo = val == tipoOutro
+                          ? (_tipoOutroCtrl.text.trim().isEmpty
+                              ? null
+                              : _tipoOutroCtrl.text.trim())
+                          : val;
                     }),
                   ),
                   obrigatorio: true,
@@ -337,6 +356,26 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
                 ),
               ),
             ],
+          ),
+          // "Outro": campo para escrever o tipo novo. Depois de salvo, ele
+          // entra na lista de tipos (criar, editar e filtrar).
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _escolheuOutro
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: _coluna(
+                      'Qual é o tipo do projeto?',
+                      _campoTexto(_tipoOutroCtrl, 'Ex: Chatbot, IoT, Jogo...',
+                          formatos: textoIdv(40),
+                          aoMudar: (val) => projetoDraft.tipo =
+                              val.trim().isEmpty ? null : val.trim()),
+                      obrigatorio: true,
+                    ),
+                  )
+                : const SizedBox(width: double.infinity),
           ),
           espaco,
           _coluna(
