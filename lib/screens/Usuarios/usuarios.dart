@@ -1,10 +1,8 @@
-import 'package:fabrica_software_app/Widgets/App_bar/App_bar.dart';
-import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
+import 'package:fabrica_software_app/Widgets/Gestao/pagina_gestao.dart';
 import 'package:fabrica_software_app/models/usuario.dart';
 import 'package:fabrica_software_app/providers/usuarios_provider.dart';
-
+import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:fabrica_software_app/screens/Usuarios/components/Usuario_modal.dart';
-import 'package:fabrica_software_app/screens/Usuarios/components/usuarioRow.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -20,169 +18,85 @@ class _UsuariosState extends State<Usuarios> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<UsuariosProvider>(context, listen: false).carregarUsuarios();
+      context.read<UsuariosProvider>().carregarUsuarios();
     });
   }
-  
+
+  /// Nível do banco (USUARIO, MASTER, ADMINISTRADOR) como aparece na tela.
+  static String _tipoConta(Usuario u) =>
+      switch ((u.nivel ?? '').toUpperCase()) {
+        'ADMINISTRADOR' => 'Administrador',
+        'MASTER' => 'Master',
+        'USUARIO' => 'Usuário',
+        '' => 'Usuário',
+        final outro => outro[0] + outro.substring(1).toLowerCase(),
+      };
+
+  static Widget _etiquetaConta(String tipo) => switch (tipo) {
+        'Administrador' => const EtiquetaGestao('Administrador',
+            fundo: StyleProjetos.azulEscuro, corTexto: Colors.white),
+        'Master' => const EtiquetaGestao('Master', fundo: Color(0xFFA9B4F0)),
+        _ => EtiquetaGestao(tipo, fundo: const Color(0xFF7DC08A)),
+      };
+
   @override
   Widget build(BuildContext context) {
-    final usuariosProvider = context.watch<UsuariosProvider>();
+    final usuarios = context.watch<UsuariosProvider>();
 
-    return Scaffold(
-      drawer: BarraLateral.drawer(context),
-      backgroundColor: Colors.transparent, // fundo do LayoutPrincipal
-      appBar: CustomAppBar(
-        title: 'Gestão de Usuários',
-        listaActions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 20.0),
-            child: ElevatedButton.icon(
-              onPressed: () => _abrirModalCriarUsuario(context), 
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Novo Usuário'),
-              style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pink, 
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-            ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1400),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 34),
-                  // Filtros
-                  const SizedBox(height: 24),
-                  
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      side: BorderSide(color: Colors.grey[200]!),
-                    ),
-                    color: Colors.white,
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Título e Contador
-                        Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Lista de Usuários',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                '${usuariosProvider.usuarios?.length ?? 0} usuários encontrados',
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // --- CABEÇALHO DA TABELA ---
-                        Container(
-                          width: double.infinity,
-                          color: Colors.grey[50],
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-                          child: Row(
-                            children: const [
-                              Expanded(flex: 3, child: Text('Nome', style: TextStyle(fontWeight: FontWeight.bold))),
-                              Expanded(flex: 3, child: Text('E-mail', style: TextStyle(fontWeight: FontWeight.bold))),
-                              Expanded(flex: 2, child: Text('Telefone', style: TextStyle(fontWeight: FontWeight.bold))),
-                              Expanded(
-                                flex: 2, 
-                                child: Center(child: Text('Nível', style: TextStyle(fontWeight: FontWeight.bold)))
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Center(
-                                  child: Text('Ações', style: TextStyle(fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // --- LISTAGEM ---
-                        if (usuariosProvider.isLoading)
-                          const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(32.0),
-                              child: CircularProgressIndicator(),
-                            ),
-                          )
-                        else if (usuariosProvider.error != null)
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(32.0),
-                              child: Text('Erro ao buscar usuários: ${usuariosProvider.error}'),
-                            ),
-                          )
-                        else if (usuariosProvider.usuarios == null || usuariosProvider.usuarios!.isEmpty)
-                          const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(32.0),
-                              child: Text('Nenhum usuário encontrado.'),
-                            ),
-                          )
-                        else
-                          Column(
-                            children: usuariosProvider.usuarios!.map((usuario) {
-                              return UsuarioRow(
-                                nome: usuario.nome, 
-                                email: usuario.email,
-                                nivel: usuario.nivel ?? 'Colaborador',
-                                telefone: usuario.telefone ?? '-',
-                                onView: () => _abrirModalUsuario(context, usuario, UsuarioModalMode.view),
-                                onEdit: () => _abrirModalUsuario(context, usuario, UsuarioModalMode.edit),
-                                onDelete: () => _abrirModalUsuario(context, usuario, UsuarioModalMode.delete),
-                              );
-                            }).toList(),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    return PaginaGestao<Usuario>(
+      titulo: 'Gestão de Usuários',
+      rotuloNovo: 'Criar Usuário',
+      aoNovo: () => _abrirModalCriarUsuario(context),
+      tituloLista: 'Lista de Usuários',
+      singular: 'usuário',
+      plural: 'usuários',
+      itens: usuarios.usuarios ?? const [],
+      carregando: usuarios.isLoading,
+      erro: usuarios.error,
+      aoRecarregar: usuarios.carregarUsuarios,
+      nome: (u) => u.nome,
+      textoBusca: (u) =>
+          '${u.nome} ${u.email} ${u.telefone ?? ''} ${_tipoConta(u)}',
+      rotuloFiltro: 'Tipo de conta',
+      valorFiltro: _tipoConta,
+      colunas: const [
+        ColunaGestao('Nome de usuário', flex: 4),
+        ColunaGestao('E-mail', flex: 4),
+        ColunaGestao('Telefone', flex: 3),
+        ColunaGestao('Tipo de conta', flex: 2, alinhamento: Alignment.center),
+        ColunaGestao('Ações', flex: 2, alinhamento: Alignment.center),
+      ],
+      celulas: (u) => [
+        NomeComAvatar(u.nome),
+        TextoCelula(u.email),
+        (u.telefone ?? '').trim().isEmpty
+            ? const TextoCelula('—', secundario: true)
+            : TextoCelula(u.telefone!),
+        _etiquetaConta(_tipoConta(u)),
+      ],
+      acoes: (u) => AcoesGestao(
+        aoVer: () => _abrirModalUsuario(context, u, UsuarioModalMode.view),
+        aoEditar: () => _abrirModalUsuario(context, u, UsuarioModalMode.edit),
+        aoExcluir: () =>
+            _abrirModalUsuario(context, u, UsuarioModalMode.delete),
       ),
     );
   }
 }
 
-void _abrirModalUsuario(BuildContext context, Usuario usuario, UsuarioModalMode modo) {
+void _abrirModalUsuario(
+    BuildContext context, Usuario usuario, UsuarioModalMode modo) {
   showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (ctx) => UsuarioModal(
-      mode: modo,
-      usuario: usuario,
-    ),
+    builder: (ctx) => UsuarioModal(mode: modo, usuario: usuario),
   );
 }
 
 void _abrirModalCriarUsuario(BuildContext context) {
   showDialog(
     context: context,
-    barrierDismissible: false, 
-    builder: (ctx) => const UsuarioModal(
-      mode: UsuarioModalMode.create,
-    ),
+    barrierDismissible: false,
+    builder: (ctx) => const UsuarioModal(mode: UsuarioModalMode.create),
   );
 }

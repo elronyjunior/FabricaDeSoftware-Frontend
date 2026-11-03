@@ -1,9 +1,8 @@
-import 'package:fabrica_software_app/Widgets/App_bar/App_bar.dart';
-import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
+import 'package:fabrica_software_app/Widgets/Gestao/pagina_gestao.dart';
 import 'package:fabrica_software_app/models/cliente.dart';
 import 'package:fabrica_software_app/providers/clientes_provider.dart';
 import 'package:fabrica_software_app/providers/endereco_provider.dart';
-import 'package:fabrica_software_app/screens/Clientes/components/ClienteRow.dart';
+import 'package:fabrica_software_app/providers/projetos_provider.dart';
 import 'package:fabrica_software_app/screens/Clientes/components/Cliente_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,185 +19,88 @@ class _ClientesState extends State<Clientes> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ClientesProvider>(context, listen: false).carregarClientes();
+      context.read<ClientesProvider>().carregarClientes();
+      // A coluna "Projeto(s)" conta os projetos de cada cliente.
+      final projetos = context.read<ProjetosProvider>();
+      if (!projetos.projetosCarregados) projetos.carregarProjetos();
     });
   }
-  
+
+  /// 12345678000190 -> 12.345.678/0001-90 (outros formatos ficam como estão).
+  static String _cnpj(String valor) {
+    final d = valor.replaceAll(RegExp(r'\D'), '');
+    if (d.length != 14) return valor;
+    return '${d.substring(0, 2)}.${d.substring(2, 5)}.${d.substring(5, 8)}/'
+        '${d.substring(8, 12)}-${d.substring(12)}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final clientesProvider = context.watch<ClientesProvider>();
+    final clientes = context.watch<ClientesProvider>();
+    final projetos = context.watch<ProjetosProvider>();
 
     return ChangeNotifierProvider(
       create: (_) => EnderecosProvider(),
-      child: Builder(
-        builder: (scaffoldContext) {
-          final enderecosProvider = scaffoldContext.read<EnderecosProvider>();
+      child: Builder(builder: (ctx) {
+        final enderecos = ctx.read<EnderecosProvider>();
 
-          return Scaffold(
-            drawer: BarraLateral.drawer(context),
-            backgroundColor: Colors.transparent, // fundo do LayoutPrincipal
-            appBar: CustomAppBar(
-              title: 'Gestão de Clientes',
-              listaActions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 20.0),
-                 child: ElevatedButton.icon(
-                        onPressed: () => _abrirModalCriarCliente(scaffoldContext, enderecosProvider), 
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Novo Cliente'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.pink, 
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                ),
-              ],
-            ),
-            body: SingleChildScrollView(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1400),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 34),
-                        // Filtros viriam aqui
-                        const SizedBox(height: 24),
-                        
-                        Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0),
-                            side: BorderSide(color: Colors.grey[200]!),
-                          ),
-                          color: Colors.white,
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Título da Tabela
-                              Padding(
-                                padding: const EdgeInsets.all(20.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Lista de Clientes',
-                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                    ),
-                                    Text(
-                                      '${clientesProvider.clientes?.length ?? 0} clientes encontrados',
-                                      style: const TextStyle(color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // --- CABEÇALHO DA TABELA (HEADER) ---
-                              Container(
-                                width: double.infinity,
-                                color: Colors.grey[50],
-                                // Padding horizontal igual ao da Linha (20)
-                                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-                                child: Row(
-                                  children: const [
-                                    // Flex 3: Razão Social
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text('Razão Social', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    ),
-                                    // Flex 2: CNPJ
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text('CNPJ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    ),
-                                    // Flex 1: Setor (Centralizado)
-                                    Expanded(
-                                      flex: 1,
-                                      child: Center(child: Text('Setor', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    ),
-                                    // Flex 2: Contato (Padding leve na esquerda para alinhar com texto)
-                                    Expanded(
-                                      flex: 2,
-                                      child: Padding(
-                                        padding: EdgeInsets.only(left: 8.0),
-                                        child: Text('Contato', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      ),
-                                    ),
-                                    // Flex 1: Projetos (Centralizado)
-                                    Expanded(
-                                      flex: 1,
-                                      child: Center(child: Text('Projeto(s)', style: TextStyle(fontWeight: FontWeight.bold))),
-                                    ),
-                                    // Flex 1: Ações (Alinhado à Direita)
-                                    Expanded(
-                                      flex: 1,
-                                      child: Center(
-                                        child: Text('Ações', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // --- LISTA DE DADOS ---
-                              if (clientesProvider.isLoading)
-                                const Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(32.0),
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                )
-                              else if (clientesProvider.error != null)
-                                Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(32.0),
-                                    child: Text('Erro ao buscar clientes: ${clientesProvider.error}'),
-                                  ),
-                                )
-                              else if (clientesProvider.clientes == null || clientesProvider.clientes!.isEmpty)
-                                const Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(32.0),
-                                    child: Text('Nenhum cliente encontrado.'),
-                                  ),
-                                )
-                              else
-                                Column(
-                                  children: clientesProvider.clientes!.map((cliente) {
-                                    return ClienteRow(
-                                      razaoSocial: cliente.razaoSocial, 
-                                      CNPJ: cliente.cnpj,
-                                      setor:'${cliente.setor}' ,
-                                      contato: cliente.email,
-                                      onView: () => _abrirModalCliente(scaffoldContext, cliente, ClienteModalMode.view, enderecosProvider),
-                                      onEdit: () => _abrirModalCliente(scaffoldContext, cliente, ClienteModalMode.edit, enderecosProvider),
-                                      onDelete: () => _abrirModalCliente(scaffoldContext, cliente, ClienteModalMode.delete, enderecosProvider),
-                                    );
-                                  }).toList(),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-      ),
+        return PaginaGestao<Cliente>(
+          titulo: 'Gestão de Clientes',
+          rotuloNovo: 'Novo Cliente',
+          aoNovo: () => _abrirModalCriarCliente(ctx, enderecos),
+          tituloLista: 'Lista de Clientes',
+          singular: 'cliente',
+          plural: 'clientes',
+          itens: clientes.clientes ?? const [],
+          carregando: clientes.isLoading,
+          erro: clientes.error,
+          aoRecarregar: () {
+            clientes.carregarClientes();
+            projetos.carregarProjetos();
+          },
+          nome: (c) => c.razaoSocial,
+          textoBusca: (c) =>
+              '${c.razaoSocial} ${c.cnpj} ${_cnpj(c.cnpj)} ${c.setor ?? ''} ${c.email} ${c.contato ?? ''}',
+          rotuloFiltro: 'Setor',
+          valorFiltro: (c) =>
+              (c.setor ?? '').trim().isEmpty ? null : c.setor!.trim(),
+          colunas: const [
+            ColunaGestao('Razão social', flex: 4),
+            ColunaGestao('CNPJ', flex: 3),
+            ColunaGestao('Setor', flex: 2, alinhamento: Alignment.center),
+            ColunaGestao('Contato', flex: 4),
+            ColunaGestao('Projeto', flex: 2, alinhamento: Alignment.center),
+            ColunaGestao('Ações', flex: 2, alinhamento: Alignment.center),
+          ],
+          celulas: (c) {
+            final n = projetos.projetosDoCliente(c.id);
+            return [
+              NomeComAvatar(c.razaoSocial),
+              TextoCelula(_cnpj(c.cnpj)),
+              (c.setor ?? '').trim().isEmpty
+                  ? const TextoCelula('—', secundario: true)
+                  : EtiquetaGestao(c.setor!.trim()),
+              TextoCelula(c.email),
+              TextoCelula(n == 1 ? '1 Projeto' : '$n Projetos',
+                  secundario: n == 0),
+            ];
+          },
+          acoes: (c) => AcoesGestao(
+            aoVer: () =>
+                _abrirModalCliente(ctx, c, ClienteModalMode.view, enderecos),
+            aoEditar: () =>
+                _abrirModalCliente(ctx, c, ClienteModalMode.edit, enderecos),
+            aoExcluir: () =>
+                _abrirModalCliente(ctx, c, ClienteModalMode.delete, enderecos),
+          ),
+        );
+      }),
     );
   }
 }
 
-void _abrirModalCliente(BuildContext context, Cliente cliente, ClienteModalMode modo, EnderecosProvider provider) {
+void _abrirModalCliente(BuildContext context, Cliente cliente,
+    ClienteModalMode modo, EnderecosProvider provider) {
   showDialog(
     context: context,
     barrierDismissible: false,
@@ -214,7 +116,7 @@ void _abrirModalCliente(BuildContext context, Cliente cliente, ClienteModalMode 
 void _abrirModalCriarCliente(BuildContext context, EnderecosProvider provider) {
   showDialog(
     context: context,
-    barrierDismissible: false, 
+    barrierDismissible: false,
     useRootNavigator: false,
     builder: (ctx) => ClienteModal(
       mode: ClienteModalMode.create,
