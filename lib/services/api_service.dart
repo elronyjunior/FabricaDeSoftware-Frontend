@@ -370,6 +370,10 @@ class ApiService {
   static Future<List<dynamic>> getClientes() async => _get(ApiConfig.clientes);
   static Future<List<dynamic>> getTecnologias() async => _get(ApiConfig.tecnologias);
   static Future<List<dynamic>> getContribuidores() async => _get(ApiConfig.contribuidores);
+
+  /// Vínculos pessoa-projeto (com o nome da pessoa), para o filtro de membros.
+  static Future<List<dynamic>> getContribuidoresProjetos() async =>
+      _get(ApiConfig.contribuidoresProjeto);
   static Future<List<dynamic>> getRecursos() async => _get(ApiConfig.recursos);
 
   // Novo método para buscar os IDs das tecnologias do projeto

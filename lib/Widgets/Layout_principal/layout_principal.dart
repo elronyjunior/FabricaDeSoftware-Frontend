@@ -185,8 +185,13 @@ class CamadaModal {
 
   static bool get aberta => conteudo.value != null;
 
+  /// Fundo claro e desfocado (popovers, como o filtro de projetos) em vez
+  /// do escurecido dos modais grandes.
+  static bool claro = false;
+
   /// Mostra [modal]; completa quando [fechar] for chamado.
-  static Future<void> abrir(Widget modal) {
+  static Future<void> abrir(Widget modal, {bool fundoClaro = false}) {
+    claro = fundoClaro;
     _aoFechar?.complete();
     final completer = Completer<void>();
     _aoFechar = completer;
@@ -212,9 +217,11 @@ class _CamadaModalView extends StatefulWidget {
 
 class _CamadaModalViewState extends State<_CamadaModalView>
     with SingleTickerProviderStateMixin {
-  /// Barreira escura por trás do modal (também cobre o menu lateral).
-  static const _barreira = Color(0xB8000000);
-  static const _desfoqueBarreira = 8.0;
+  /// Barreira por trás do modal (também cobre o menu lateral): escura nos
+  /// modais grandes, clara e desfocada nos popovers.
+  Color get _barreira =>
+      CamadaModal.claro ? const Color(0x1F0F1030) : const Color(0xB8000000);
+  double get _desfoqueBarreira => CamadaModal.claro ? 6.0 : 8.0;
 
   late final AnimationController _entrada = AnimationController(
     vsync: this,
