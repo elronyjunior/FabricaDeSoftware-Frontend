@@ -26,7 +26,6 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
   final _rolagem = ScrollController();
   int _quantidade = _lote;
   int _total = 0;
-  bool _ordenarAZ = false;
 
   /// A lista já desceu: mostra a sombra na borda de cima da rolagem.
   bool _rolado = false;
@@ -156,12 +155,8 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
           Expanded(
             child: Consumer<ProjetosProvider>(
               builder: (context, provider, _) {
-                final projetos = List<Projeto>.of(provider.projetos ?? []);
-                if (_ordenarAZ) {
-                  projetos.sort((a, b) => a.nomeProjeto
-                      .toLowerCase()
-                      .compareTo(b.nomeProjeto.toLowerCase()));
-                }
+                // Filtrados, na ordem escolhida e com os fixados no topo.
+                final projetos = provider.projetosOrdenados;
                 _total = projetos.length;
 
                 return Column(
@@ -169,11 +164,11 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
                   children: [
                     _BarraFerramentas(
                       total: projetos.length,
-                      ordenarAZ: _ordenarAZ,
-                      onOrdenar: () => setState(() {
-                        _ordenarAZ = !_ordenarAZ;
-                        _voltarAoTopo();
-                      }),
+                      ordem: provider.ordem,
+                      onOrdenar: () {
+                        setState(_voltarAoTopo);
+                        provider.proximaOrdem();
+                      },
                       onRecarregar: _recarregar,
                     ),
                     const SizedBox(height: 31),
@@ -351,13 +346,13 @@ class _BotaoNovoProjeto extends StatelessWidget {
 class _BarraFerramentas extends StatelessWidget {
   const _BarraFerramentas({
     required this.total,
-    required this.ordenarAZ,
+    required this.ordem,
     required this.onOrdenar,
     required this.onRecarregar,
   });
 
   final int total;
-  final bool ordenarAZ;
+  final OrdemProjetos ordem;
   final VoidCallback onOrdenar;
   final VoidCallback onRecarregar;
 
@@ -372,10 +367,14 @@ class _BarraFerramentas extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _BotaoFerramenta(
-          dica: ordenarAZ ? 'Remover ordenação' : 'Ordenar de A a Z',
-          ativo: ordenarAZ,
+          dica: switch (ordem) {
+            OrdemProjetos.padrao => 'Ordenar de A a Z',
+            OrdemProjetos.az => 'Ordenar de Z a A',
+            OrdemProjetos.za => 'Voltar à ordem padrão (status e data final)',
+          },
+          ativo: ordem != OrdemProjetos.padrao,
           onTap: onOrdenar,
-          child: const _IconeAZ(),
+          child: _IconeAZ(invertido: ordem == OrdemProjetos.za),
         ),
         const SizedBox(width: 6),
         _BotaoFerramenta(
@@ -479,7 +478,10 @@ class _BotaoFerramenta extends StatelessWidget {
 /// Ícone "A sobre Z + seta para baixo", igual ao da referência.
 /// Herda tamanho e cor do IconTheme do _BotaoFerramenta.
 class _IconeAZ extends StatelessWidget {
-  const _IconeAZ();
+  const _IconeAZ({this.invertido = false});
+
+  /// Z em cima e A embaixo (ordem de Z a A).
+  final bool invertido;
 
   @override
   Widget build(BuildContext context) {
@@ -501,9 +503,9 @@ class _IconeAZ extends StatelessWidget {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('A', style: letra),
+              Text(invertido ? 'Z' : 'A', style: letra),
               SizedBox(height: tamanho * 0.05),
-              Text('Z', style: letra),
+              Text(invertido ? 'A' : 'Z', style: letra),
             ],
           ),
           Icon(Icons.arrow_downward, size: tamanho * 0.62, color: tema.color),
