@@ -18,6 +18,7 @@ class ProjetosProvider with ChangeNotifier {
 
   // Getters
   bool get isLoading => _isLoading;
+  String get filtroNome => _filtroNome;
   String? get error => _error;
   
   // Getter Mágico: Retorna a lista já filtrada

@@ -1,6 +1,6 @@
 import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
-import 'package:fabrica_software_app/Widgets/Modal_conversacional/modal_conversacional.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_novo_projeto.dart';
 import 'package:fabrica_software_app/models/projeto.dart';
 import 'package:fabrica_software_app/providers/projetos_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
@@ -28,6 +28,9 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
   int _total = 0;
   bool _ordenarAZ = false;
 
+  /// A lista já desceu: mostra a sombra na borda de cima da rolagem.
+  bool _rolado = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +50,8 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
 
   void _aoRolar() {
     final posicao = _rolagem.position;
+    final rolado = posicao.pixels > 2;
+    if (rolado != _rolado) setState(() => _rolado = rolado);
     if (posicao.pixels >= posicao.maxScrollExtent - 300) _carregarMais();
   }
 
@@ -83,8 +88,13 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
 
     return Scaffold(
       drawer: BarraLateral.drawer(context),
+      // Sem fundo próprio: o degradê vem do LayoutPrincipal e passa contínuo
+      // por trás do menu e da tela (um degradê só, sem emenda).
+      backgroundColor: desktop ? Colors.transparent : null,
       body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: StyleProjetos.gradienteFundo),
+        decoration: desktop
+            ? const BoxDecoration()
+            : const BoxDecoration(gradient: StyleProjetos.gradienteFundo),
         child: SafeArea(
           child: desktop
               // Desktop: desenha na escala do Figma e amplia tudo
@@ -234,37 +244,56 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
         // não são mais cortados pela borda da rolagem.
         return _ComFolga(
           folga: _folgaGrade,
-          child: CustomScrollView(
-            controller: _rolagem,
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                    _folgaGrade, _folgaGrade, _folgaGrade, 0),
-                sliver: SliverToBoxAdapter(
-                  child: _GradeCards(
-                    projetos: visiveis,
-                    colunas: colunas,
+          // Ao rolar, os cards esmaecem na borda de cima em vez de serem
+          // cortados secos pela linha da barra de ferramentas.
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: _rolado ? 1 : 0),
+            duration: const Duration(milliseconds: 220),
+            builder: (context, t, rolagem) => ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (area) => LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withOpacity(1 - t),
+                  Colors.white,
+                ],
+                stops: [0, (36 / area.height).clamp(0.0, 1.0)],
+              ).createShader(area),
+              child: rolagem,
+            ),
+            child: CustomScrollView(
+              controller: _rolagem,
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                      _folgaGrade, _folgaGrade, _folgaGrade, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: _GradeCards(
+                      projetos: visiveis,
+                      colunas: colunas,
+                    ),
                   ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 28),
-                  child: Center(
-                    child: temMais
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: StyleProjetos.laranja,
-                            ),
-                          )
-                        : const SizedBox.shrink(),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 28),
+                    child: Center(
+                      child: temMais
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: StyleProjetos.laranja,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -273,8 +302,8 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
 }
 
 void abrirModalCriacao(BuildContext context) {
-  // Formulário conversacional (mesmo formulário e mesmo envio do wizard).
-  abrirModalConversacional(context).then((_) {
+  // Painel lateral com abas (mesmo formulário e mesmo envio do wizard).
+  abrirModalNovoProjeto(context).then((_) {
     // Recarrega a lista ao fechar o modal (cancelar ou finalizar),
     // para que um projeto recém-criado apareça sem sair da tela.
     if (context.mounted) {
@@ -296,11 +325,11 @@ class _BotaoNovoProjeto extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: StyleProjetos.gradienteLaranja,
-        borderRadius: BorderRadius.circular(StyleProjetos.botaoRaio),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: const Icon(Icons.add, size: 20, color: Colors.white),
+        icon: const Icon(Icons.add_rounded, size: 22, color: Colors.white),
         label: Text('Novo Projeto', style: StyleProjetos.botao),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
@@ -308,10 +337,10 @@ class _BotaoNovoProjeto extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
           foregroundColor: Colors.white,
           elevation: 0,
-          minimumSize: const Size(146, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(StyleProjetos.botaoRaio)),
+          minimumSize: const Size(172, 50),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         ),
       ),
     );

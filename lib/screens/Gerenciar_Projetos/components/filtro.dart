@@ -242,7 +242,11 @@ class CampoPesquisa extends StatefulWidget {
 }
 
 class _CampoPesquisaState extends State<CampoPesquisa> {
-  final _controller = TextEditingController();
+  // Começa com o filtro atual: o campo é recriado quando o layout muda
+  // (ex.: ao redimensionar a janela) e não pode aparecer vazio com o
+  // filtro ainda ativo.
+  late final _controller =
+      TextEditingController(text: context.read<ProjetosProvider>().filtroNome);
   final _foco = FocusNode();
 
   @override
@@ -281,32 +285,31 @@ class _CampoPesquisaState extends State<CampoPesquisa> {
             const Icon(Icons.search, size: 18, color: StyleProjetos.azulEscuro),
             const SizedBox(width: 8),
             Expanded(
-              // `expands` faz o campo ocupar toda a altura da pílula e
-              // centralizar o texto na mesma linha do ícone.
+              // Campo de uma linha, da altura do texto, centralizado pela
+              // Row na mesma linha do ícone (como o texto do "Filtro").
               child: TextField(
                 controller: _controller,
                 focusNode: _foco,
                 onChanged: (v) =>
                     context.read<ProjetosProvider>().setFiltroNome(v),
-                style: StyleProjetos.pesquisa.copyWith(height: 1.2),
+                style: StyleProjetos.controle,
+                strutStyle:
+                    const StrutStyle(forceStrutHeight: true, height: 1.2),
                 cursorColor: StyleProjetos.azulEscuro,
                 cursorHeight: 16,
-                expands: true,
-                maxLines: null,
-                minLines: null,
+                maxLines: 1,
                 // Campo de uma linha só: Enter não quebra linha.
                 keyboardType: TextInputType.text,
                 textInputAction: TextInputAction.search,
                 inputFormatters: [
                   FilteringTextInputFormatter.deny(RegExp(r'\n')),
                 ],
-                textAlignVertical: TextAlignVertical.center,
                 decoration: InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
                   hintText: 'Pesquisa',
-                  hintStyle: StyleProjetos.pesquisa.copyWith(height: 1.2),
+                  hintStyle: StyleProjetos.controle,
                 ),
               ),
             ),
