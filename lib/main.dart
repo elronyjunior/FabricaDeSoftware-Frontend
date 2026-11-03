@@ -82,7 +82,42 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
+          // Troca de tela discreta e igual em todas as plataformas.
+          pageTransitionsTheme: const PageTransitionsTheme(builders: {
+            TargetPlatform.android: TransicaoSuave(),
+            TargetPlatform.iOS: TransicaoSuave(),
+            TargetPlatform.windows: TransicaoSuave(),
+            TargetPlatform.macOS: TransicaoSuave(),
+            TargetPlatform.linux: TransicaoSuave(),
+            TargetPlatform.fuchsia: TransicaoSuave(),
+          }),
         ),
       );
+  }
+}
+
+/// Troca de tela: a nova aparece enquanto a anterior some (esmaecer cruzado
+/// rápido). As telas não têm fundo próprio, então a anterior precisa sumir
+/// junto, senão as duas ficariam sobrepostas no meio da troca.
+class TransicaoSuave extends PageTransitionsBuilder {
+  const TransicaoSuave();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final entrada = CurvedAnimation(
+        parent: animation, curve: const Interval(0.2, 1, curve: Curves.easeOut));
+    final saida = CurvedAnimation(
+        parent: secondaryAnimation,
+        curve: const Interval(0, 0.6, curve: Curves.easeOut));
+    return FadeTransition(
+      opacity: entrada,
+      child: FadeTransition(opacity: ReverseAnimation(saida), child: child),
+    );
   }
 }
