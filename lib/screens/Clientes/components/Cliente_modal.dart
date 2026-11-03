@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/providers/endereco_provider.dart';
 import 'package:fabrica_software_app/screens/Clientes/components/Endereco_modal.dart';
 import 'package:flutter/material.dart';
@@ -372,10 +373,7 @@ class _ClienteModalState extends State<ClienteModal> {
       try {
         enderecoAtual = await widget.enderecosProvider.buscarEndereco(_tempEnderecoId!);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erro ao buscar endereço: $e'),
-          backgroundColor: Colors.red,
-        ));
+        avisar(context, 'Erro ao buscar endereço: $e', tipo: TipoAviso.erro);
         setState(() { _isClienteModalLoading = false; });
         return;
       }
@@ -402,9 +400,7 @@ class _ClienteModalState extends State<ClienteModal> {
 
   Future<void> _submitClienteForm(VoidCallback onSuccess) async {
     if (_tempEnderecoId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Erro: Endereço é obrigatório.'),
-          backgroundColor: Colors.red));
+      avisar(context, 'Erro: Endereço é obrigatório.', tipo: TipoAviso.erro);
       return;
     }
 
@@ -429,9 +425,7 @@ class _ClienteModalState extends State<ClienteModal> {
         }
         onSuccess();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Erro ao salvar cliente: $e'),
-            backgroundColor: Colors.red));
+        avisar(context, 'Erro ao salvar cliente: $e', tipo: TipoAviso.erro);
       } finally {
         setState(() { _isClienteModalLoading = false; });
       }
@@ -444,9 +438,7 @@ class _ClienteModalState extends State<ClienteModal> {
       await context.read<ClientesProvider>().excluirCliente(widget.cliente!.id!);
       onSuccess();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erro ao excluir cliente: $e'),
-          backgroundColor: Colors.red));
+      avisar(context, 'Erro ao excluir cliente: $e', tipo: TipoAviso.erro);
     } finally {
       setState(() { _isClienteModalLoading = false; });
     }

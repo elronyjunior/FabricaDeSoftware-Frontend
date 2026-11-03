@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/screens/Login/Components/auth_components.dart';
 import 'package:fabrica_software_app/screens/Login/Styles/style_login.dart';
 import 'package:flutter/material.dart';
@@ -60,8 +61,7 @@ class _LoginscreenState extends State<Loginscreen> {
 
   void _mostrarErro(String mensagem) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(mensagem)));
+    avisar(context, mensagem, tipo: TipoAviso.info);
   }
 
   // ---------------- UI ----------------

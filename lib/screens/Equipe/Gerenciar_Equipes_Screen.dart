@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/App_bar/App_bar.dart';
 import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
 import 'package:fabrica_software_app/screens/Equipe/modais/Modal_Adicionar.dart';
@@ -22,7 +23,7 @@ class _GerenciarEquipesScreenState extends State<GerenciarEquipesScreen> {
       child: Scaffold(
         appBar: CustomAppBar(title: "Gestão de Equipes"),
         drawer: BarraLateral.drawer(context),
-        backgroundColor: Colors.grey[50],
+        backgroundColor: Colors.transparent, // fundo do LayoutPrincipal
         body: Consumer<EquipesProvider>(
           builder: (context, provider, child) {
             if (provider.isLoading) {
@@ -67,15 +68,8 @@ class _GerenciarEquipesScreenState extends State<GerenciarEquipesScreen> {
                                 membros: membros,
                                 onMemberAdded: (contribuidor) {
                                   provider.adicionarMembro(projeto.id!, contribuidor.id!);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('${contribuidor.nome} adicionado ao time!'),
-                                      backgroundColor: Colors.green,
-                                      duration: const Duration(milliseconds: 1000),
-                                      behavior: SnackBarBehavior.floating,
-                                      width: 400,
-                                    )
-                                  );
+                                  avisar(context, '${contribuidor.nome} adicionado ao time!',
+                                      tipo: TipoAviso.sucesso);
                                 },
                                 onMemberRemoved: (contribuidor) {
                                   provider.removerMembro(projeto.id!, contribuidor.id!);
