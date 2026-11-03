@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -334,7 +335,7 @@ class _SecaoWidgetState extends State<SecaoWidget> {
   }
 
   Future<void> _confirmarRemocao(BuildContext context, DocumentoEditorProvider provider) async {
-    final confirmar = await showDialog<bool>(
+    final confirmar = await mostrarDialogo<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,

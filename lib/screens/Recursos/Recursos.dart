@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
 import 'package:fabrica_software_app/models/projeto.dart';
 import 'package:fabrica_software_app/models/recurso.dart';
@@ -200,7 +201,7 @@ class _RecursosState extends State<Recursos> {
 }
 
 void _abrirModalRecurso(BuildContext context, Recurso recurso, RecursoModalMode modo) {
-  showDialog(
+  mostrarDialogo(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => RecursoModal(
@@ -211,7 +212,7 @@ void _abrirModalRecurso(BuildContext context, Recurso recurso, RecursoModalMode 
 }
 
 void _abrirModalCriarRecurso(BuildContext context) {
-  showDialog(
+  mostrarDialogo(
     context: context,
     barrierDismissible: false, 
     builder: (ctx) => const RecursoModal(

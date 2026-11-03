@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/App_bar/App_bar.dart';
 import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
@@ -121,7 +122,7 @@ class _GerenciarEquipesScreenState extends State<GerenciarEquipesScreen> {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () {
-                              showDialog(
+                              mostrarDialogo(
                                 context: context,
                                 builder: (_) => ModalAdicionarPessoa(provider: provider),
                               );
@@ -366,7 +367,7 @@ class _DraggablePersonItemState extends State<DraggablePersonItem> {
                     // Botão Editar
                     InkWell(
                       onTap: () {
-                        showDialog(
+                        mostrarDialogo(
                           context: context,
                           builder: (_) => ModalAdicionarPessoa(
                             provider: widget.provider,
@@ -387,7 +388,7 @@ class _DraggablePersonItemState extends State<DraggablePersonItem> {
                     // Botão Excluir
                     InkWell(
                       onTap: () {
-                        showDialog(
+                        mostrarDialogo(
                           context: context,
                           builder: (ctx) => AlertDialog(
                             backgroundColor: Colors.white,

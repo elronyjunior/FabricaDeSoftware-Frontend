@@ -38,7 +38,7 @@ class BotaoFiltro extends StatelessWidget {
     // Retângulo do botão na janela (já considera a escala da tela).
     final ancora = MatrixUtils.transformRect(
         caixa.getTransformTo(null), Offset.zero & caixa.size);
-    CamadaModal.abrir(PopoverFiltros(ancora: ancora), fundoClaro: true);
+    CamadaModal.abrir(PopoverFiltros(ancora: ancora));
   }
 
   @override
@@ -209,7 +209,8 @@ class _PopoverFiltrosState extends State<PopoverFiltros> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Material(
-            color: Colors.white.withOpacity(0.82),
+            // Opaco: o fundo escuro da camada não muda a cor do painel.
+            color: const Color(0xFFF8F9FC),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
               side: BorderSide(color: Colors.white.withOpacity(0.9)),

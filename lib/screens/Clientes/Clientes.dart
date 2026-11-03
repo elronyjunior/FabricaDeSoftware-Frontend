@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Gestao/pagina_gestao.dart';
 import 'package:fabrica_software_app/models/cliente.dart';
 import 'package:fabrica_software_app/providers/clientes_provider.dart';
@@ -101,7 +102,7 @@ class _ClientesState extends State<Clientes> {
 
 void _abrirModalCliente(BuildContext context, Cliente cliente,
     ClienteModalMode modo, EnderecosProvider provider) {
-  showDialog(
+  mostrarDialogo(
     context: context,
     barrierDismissible: false,
     useRootNavigator: false,
@@ -114,7 +115,7 @@ void _abrirModalCliente(BuildContext context, Cliente cliente,
 }
 
 void _abrirModalCriarCliente(BuildContext context, EnderecosProvider provider) {
-  showDialog(
+  mostrarDialogo(
     context: context,
     barrierDismissible: false,
     useRootNavigator: false,

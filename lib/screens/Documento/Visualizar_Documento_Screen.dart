@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'dart:convert';
 
@@ -281,7 +282,7 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
   }
 
   Future<bool> _confirmarSaidaComAlteracoesPendentes(BuildContext context) async {
-    final resultado = await showDialog<String>(
+    final resultado = await mostrarDialogo<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -502,7 +503,7 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
     final controlador = TextEditingController();
     final quantidade = provider.secoesSelecionadasParaRetrabalho.length;
 
-    final instrucao = await showDialog<String>(
+    final instrucao = await mostrarDialogo<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,

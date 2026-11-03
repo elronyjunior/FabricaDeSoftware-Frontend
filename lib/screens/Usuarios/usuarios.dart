@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Gestao/pagina_gestao.dart';
 import 'package:fabrica_software_app/models/usuario.dart';
 import 'package:fabrica_software_app/providers/usuarios_provider.dart';
@@ -86,7 +87,7 @@ class _UsuariosState extends State<Usuarios> {
 
 void _abrirModalUsuario(
     BuildContext context, Usuario usuario, UsuarioModalMode modo) {
-  showDialog(
+  mostrarDialogo(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => UsuarioModal(mode: modo, usuario: usuario),
@@ -94,7 +95,7 @@ void _abrirModalUsuario(
 }
 
 void _abrirModalCriarUsuario(BuildContext context) {
-  showDialog(
+  mostrarDialogo(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => const UsuarioModal(mode: UsuarioModalMode.create),
