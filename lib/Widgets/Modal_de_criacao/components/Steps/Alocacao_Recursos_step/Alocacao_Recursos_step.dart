@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Modal_step.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Configuracao_Inicial_Projeto_step/components.dart';
 import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.dart';
@@ -11,13 +12,20 @@ class AlocacaoRecursosStep extends ModalStep {
   @override
   String get title => 'Alocação de Recursos';
   @override
-  String get tabName => 'Equipe & Recursos';
+  String get tabName => 'Equipe & recursos';
+
+  @override
+  String get ajuda =>
+      'Marque as pessoas que vão participar do projeto (ao menos uma) e os recursos que ele vai usar. Use a busca para encontrar mais rápido.';
   @override
   IconData get icon => FontAwesomeIcons.usersGear;
   @override
   List<Color> get cores => <Color>[Colors.teal, Colors.green];
 
   final GlobalKey<_AlocacaoContentState> _contentKey = GlobalKey();
+
+  @override
+  bool validar() => _contentKey.currentState?.validar() ?? true;
 
   @override
   Widget buildBody(BuildContext context) => _AlocacaoContent(key: _contentKey);
@@ -79,9 +87,6 @@ class _AlocacaoContent extends StatefulWidget {
 class _AlocacaoContentState extends State<_AlocacaoContent> {
   List<dynamic> _listaContribuidoresDB = [];
   List<dynamic> _listaRecursosDB = [];
-  dynamic _colaboradorSelecionado;
-  dynamic _recursoSelecionado;
-  final _cargoController = TextEditingController();
   bool _isLoading = true;
 
   @override
@@ -109,189 +114,121 @@ class _AlocacaoContentState extends State<_AlocacaoContent> {
   // --- VALIDAÇÃO ---
   bool validar() {
     if (projetoDraft.equipe.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Adicione pelo menos um membro à Equipe do Projeto.')));
+      avisar(context, 'Adicione pelo menos uma pessoa à equipe do projeto.');
       return false;
     }
     return true;
   }
 
-  void _adicionarColaborador() {
-    if (_colaboradorSelecionado != null) {
-      setState(() {
-        bool existe = projetoDraft.equipe
-            .any((e) => e['id'] == _colaboradorSelecionado['id']);
-        if (!existe) {
-          projetoDraft.equipe.add({
-            'id': _colaboradorSelecionado['id'],
-            'nome': _colaboradorSelecionado['nome'],
-            'papel': _colaboradorSelecionado['cargo'] ?? 'N/A'
-          });
-        }
-        _colaboradorSelecionado = null;
-        _cargoController.clear();
-      });
-    }
+  void _alternarPessoa(dynamic pessoa) {
+    setState(() {
+      final indice =
+          projetoDraft.equipe.indexWhere((e) => e['id'] == pessoa['id']);
+      if (indice >= 0) {
+        projetoDraft.equipe.removeAt(indice);
+      } else {
+        projetoDraft.equipe.add({
+          'id': pessoa['id'],
+          'nome': pessoa['nome'],
+          'papel': pessoa['cargo'] ?? 'N/A'
+        });
+      }
+    });
   }
 
-  void _adicionarRecurso() {
-    if (_recursoSelecionado != null) {
-      setState(() {
-        bool existe = projetoDraft.recursos
-            .any((r) => r['id'] == _recursoSelecionado['id']);
-        if (!existe) {
-          projetoDraft.recursos.add({
-            'id': _recursoSelecionado['id'],
-            'nome': _recursoSelecionado['nome'],
-            'tipo': _recursoSelecionado['tipo']
-          });
-        }
-        _recursoSelecionado = null;
-      });
-    }
+  void _alternarRecurso(dynamic recurso) {
+    setState(() {
+      final indice =
+          projetoDraft.recursos.indexWhere((r) => r['id'] == recurso['id']);
+      if (indice >= 0) {
+        projetoDraft.recursos.removeAt(indice);
+      } else {
+        projetoDraft.recursos.add({
+          'id': recurso['id'],
+          'nome': recurso['nome'],
+          'tipo': recurso['tipo']
+        });
+      }
+    });
+  }
+
+  Widget _cabecalho(String titulo, int marcados, {bool obrigatorio = false}) {
+    return Row(
+      children: [
+        Expanded(
+          child: ComponentsConfiguracaoInicalProjeto.buildLabel(titulo,
+              isRequired: obrigatorio),
+        ),
+        if (marcados > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: TagIdv(
+                texto: '$marcados selecionado${marcados == 1 ? '' : 's'}',
+                cor: CoresIdv.azul),
+          ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
-    return Column(
+    final equipe = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(children: const [
-          Icon(Icons.people_outline, color: Colors.blue),
-          SizedBox(width: 8),
-          Text("Equipe do Projeto (Obrigatório)",
-              style: TextStyle(fontWeight: FontWeight.bold))
-        ]),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: Container(
-                decoration:
-                    ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<dynamic>(
-                    hint: const Text("Colaborador",
-                        style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    value: _colaboradorSelecionado,
-                    isExpanded: true,
-                    items: _listaContribuidoresDB
-                        .map((c) =>
-                            DropdownMenuItem(value: c, child: Text(c['nome'])))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _colaboradorSelecionado = val;
-                        _cargoController.text = val['cargo'] ?? 'Sem cargo';
-                      });
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: Container(
-                decoration: ComponentsConfiguracaoInicalProjeto
-                    .inputBoxDecoration
-                    .copyWith(color: Colors.grey[100]),
-                child: TextField(
-                    controller: _cargoController,
-                    enabled: false,
-                    decoration:
-                        ComponentsConfiguracaoInicalProjeto.inputDecoration(
-                            "Cargo"),
-                    style: TextStyle(color: Colors.grey[700])),
-              ),
-            ),
-            const SizedBox(width: 10),
-            ElevatedButton(
-              onPressed: _adicionarColaborador,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF64B5F6),
-                  foregroundColor: Colors.white),
-              child: const Icon(Icons.add),
-            )
-          ],
+        _cabecalho('Equipe do projeto', projetoDraft.equipe.length,
+            obrigatorio: true),
+        BuscaSelecaoIdv(
+          itens: _listaContribuidoresDB,
+          rotulo: (c) => '${c['nome'] ?? ''}',
+          detalhe: (c) => c['cargo'] as String?,
+          comAvatar: true,
+          hintBusca: 'Pesquisar pessoa ou cargo',
+          textoVazio: 'Nenhum colaborador cadastrado.',
+          textoNenhumSelecionado: 'Ninguém na equipe ainda.',
+          marcado: (c) => projetoDraft.equipe.any((e) => e['id'] == c['id']),
+          aoAlternar: _alternarPessoa,
         ),
-        if (projetoDraft.equipe.isNotEmpty)
-          ...projetoDraft.equipe
-              .map((c) => ListTile(
-                    dense: true,
-                    leading:
-                        CircleAvatar(child: Text(c['nome'][0]), radius: 14),
-                    title: Text(c['nome'],
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(c['papel']),
-                    trailing: IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Colors.red, size: 18),
-                        onPressed: () {
-                          setState(() => projetoDraft.equipe.remove(c));
-                        }),
-                  ))
-              .toList(),
-        const Divider(height: 40),
-        Row(children: const [
-          Icon(Icons.inventory_2_outlined, color: Colors.teal),
-          SizedBox(width: 8),
-          Text("Recursos (Opcional)",
-              style: TextStyle(fontWeight: FontWeight.bold))
-        ]),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration:
-                    ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<dynamic>(
-                    hint: const Text("Selecione Recurso",
-                        style: TextStyle(color: Colors.grey, fontSize: 13)),
-                    value: _recursoSelecionado,
-                    isExpanded: true,
-                    items: _listaRecursosDB
-                        .map((r) =>
-                            DropdownMenuItem(value: r, child: Text(r['nome'])))
-                        .toList(),
-                    onChanged: (val) =>
-                        setState(() => _recursoSelecionado = val),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            ElevatedButton(
-              onPressed: _adicionarRecurso,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF64B5F6),
-                  foregroundColor: Colors.white),
-              child: const Icon(Icons.add),
-            )
-          ],
-        ),
-        const SizedBox(height: 10),
-        if (projetoDraft.recursos.isNotEmpty)
-          Wrap(
-            spacing: 8,
-            children: projetoDraft.recursos
-                .map((r) => Chip(
-                      label: Text(r['nome']),
-                      backgroundColor: Colors.teal[50],
-                      deleteIcon: const Icon(Icons.close, size: 14),
-                      onDeleted: () =>
-                          setState(() => projetoDraft.recursos.remove(r)),
-                    ))
-                .toList(),
-          ),
       ],
     );
+
+    final recursos = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _cabecalho('Recursos', projetoDraft.recursos.length),
+        BuscaSelecaoIdv(
+          itens: _listaRecursosDB,
+          rotulo: (r) => '${r['nome'] ?? ''}',
+          detalhe: (r) => r['tipo'] as String?,
+          grupo: (r) => r['tipo'] as String?,
+          hintBusca: 'Pesquisar recurso ou tipo',
+          textoVazio: 'Nenhum recurso cadastrado.',
+          textoNenhumSelecionado: 'Nenhum recurso escolhido ainda.',
+          marcado: (r) =>
+              projetoDraft.recursos.any((item) => item['id'] == r['id']),
+          aoAlternar: _alternarRecurso,
+        ),
+      ],
+    );
+
+    // Lado a lado quando cabe: não é preciso rolar a equipe para chegar
+    // aos recursos.
+    return LayoutBuilder(builder: (context, c) {
+      if (c.maxWidth < 720) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [equipe, const SizedBox(height: 28), recursos],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: equipe),
+          const SizedBox(width: 24),
+          Expanded(child: recursos),
+        ],
+      );
+    });
   }
 }
