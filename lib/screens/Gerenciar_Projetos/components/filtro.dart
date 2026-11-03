@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/providers/projetos_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:flutter/material.dart';
@@ -5,49 +8,42 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-typedef FiltrosProjeto = ({String tipo, String status, String cliente});
-
-const FiltrosProjeto _semFiltros =
-    (tipo: 'Todos', status: 'Todos', cliente: '');
-
 // Os mesmos status que o card calcula (Projeto.statusCalculado).
-const _opcoesStatus = ['Todos', 'Em processo', 'Concluído', 'Atrasado'];
+const _opcoesStatus = ['Em processo', 'Atrasado', 'Concluído'];
+
+const _bordaPilula = Color(0x590F1030);
+
+TextStyle _fonte(
+        {double tamanho = 15,
+        FontWeight peso = FontWeight.w400,
+        Color cor = StyleProjetos.texto}) =>
+    GoogleFonts.inter(fontSize: tamanho, fontWeight: peso, color: cor);
+
+String _data(DateTime d) =>
+    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
 // =====================================================================
 // Botão "Filtro" com contador de filtros ativos
 // =====================================================================
 
-class BotaoFiltro extends StatefulWidget {
+class BotaoFiltro extends StatelessWidget {
   const BotaoFiltro({super.key});
 
-  @override
-  State<BotaoFiltro> createState() => _BotaoFiltroState();
-}
-
-class _BotaoFiltroState extends State<BotaoFiltro> {
-  FiltrosProjeto _filtros = _semFiltros;
-
-  int get _ativos =>
-      (_filtros.tipo != 'Todos' ? 1 : 0) +
-      (_filtros.status != 'Todos' ? 1 : 0) +
-      (_filtros.cliente.isNotEmpty ? 1 : 0);
-
-  Future<void> _abrir() async {
-    final resultado = await showDialog<FiltrosProjeto>(
-      context: context,
-      builder: (_) => _DialogFiltros(inicial: _filtros),
-    );
-    if (resultado == null || !mounted) return;
-
-    setState(() => _filtros = resultado);
-    final provider = context.read<ProjetosProvider>();
-    provider.setFiltroTipo(resultado.tipo);
-    provider.setFiltroStatus(resultado.status);
-    provider.setFiltroCliente(resultado.cliente);
+  /// Abre o popover logo abaixo do botão, numa camada que cobre a janela
+  /// inteira (desfoca também o menu lateral).
+  void _abrir(BuildContext context) {
+    final caixa = context.findRenderObject() as RenderBox?;
+    if (caixa == null) return;
+    // Retângulo do botão na janela (já considera a escala da tela).
+    final ancora = MatrixUtils.transformRect(
+        caixa.getTransformTo(null), Offset.zero & caixa.size);
+    CamadaModal.abrir(PopoverFiltros(ancora: ancora), fundoClaro: true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final ativos = context.watch<ProjetosProvider>().filtros.ativos;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -58,7 +54,7 @@ class _BotaoFiltroState extends State<BotaoFiltro> {
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: _abrir,
+            onTap: () => _abrir(context),
             child: Container(
               height: StyleProjetos.controleAltura,
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -75,7 +71,7 @@ class _BotaoFiltroState extends State<BotaoFiltro> {
             ),
           ),
         ),
-        if (_ativos > 0)
+        if (ativos > 0)
           Positioned(
             top: -10,
             right: -6,
@@ -88,7 +84,7 @@ class _BotaoFiltroState extends State<BotaoFiltro> {
                 shape: BoxShape.circle,
               ),
               child: Text(
-                '$_ativos',
+                '$ativos',
                 style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
               ),
             ),
@@ -98,134 +94,584 @@ class _BotaoFiltroState extends State<BotaoFiltro> {
   }
 }
 
-class _DialogFiltros extends StatefulWidget {
-  const _DialogFiltros({required this.inicial});
-  final FiltrosProjeto inicial;
+// =====================================================================
+// Popover "Filtrar projetos"
+// =====================================================================
+
+class PopoverFiltros extends StatefulWidget {
+  const PopoverFiltros({super.key, required this.ancora});
+
+  /// Retângulo do botão "Filtro" na janela.
+  final Rect ancora;
 
   @override
-  State<_DialogFiltros> createState() => _DialogFiltrosState();
+  State<PopoverFiltros> createState() => _PopoverFiltrosState();
 }
 
-class _DialogFiltrosState extends State<_DialogFiltros> {
-  late String _tipo = widget.inicial.tipo;
-  late String _status = widget.inicial.status;
-  late final _cliente = TextEditingController(text: widget.inicial.cliente);
+class _PopoverFiltrosState extends State<PopoverFiltros> {
+  static const _largura = 420.0;
+
+  late final ProjetosProvider _provider = context.read<ProjetosProvider>();
+  late Set<String> _status = {..._provider.filtros.status};
+  late DateTime? _conclusaoAte = _provider.filtros.conclusaoAte;
+  late String? _tipo = _provider.filtros.tipo;
+  late Set<String> _membros = {..._provider.filtros.membros};
+  late final _cliente = TextEditingController(text: _provider.filtros.cliente);
+  final _buscaMembro = TextEditingController();
+  final _focoCliente = FocusNode();
+  final _focoMembro = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focoCliente.addListener(() => setState(() {}));
+    _focoMembro.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
     _cliente.dispose();
+    _buscaMembro.dispose();
+    _focoCliente.dispose();
+    _focoMembro.dispose();
     super.dispose();
   }
 
-  InputDecoration _decoracao({String? hint, IconData? icone}) =>
-      InputDecoration(
-        hintText: hint,
-        prefixIcon: icone == null ? null : Icon(icone, size: 18),
-        isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide:
-              const BorderSide(color: StyleProjetos.laranja, width: 1.5),
-        ),
+  FiltrosProjeto get _atual => FiltrosProjeto(
+        status: _status,
+        conclusaoAte: _conclusaoAte,
+        tipo: _tipo,
+        cliente: _cliente.text.trim(),
+        membros: _membros,
       );
 
-  Widget _rotulo(String texto) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          texto,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: StyleProjetos.textoSecundario,
-          ),
-        ),
-      );
+  void _filtrar() {
+    _provider.aplicarFiltros(_atual);
+    CamadaModal.fechar();
+  }
 
-  Widget _dropdown(
-      List<String> opcoes, String valor, ValueChanged<String> aoMudar) {
-    return DropdownButtonFormField<String>(
-      // Valor que não está mais entre as opções volta para "Todos".
-      value: opcoes.contains(valor) ? valor : opcoes.first,
-      isExpanded: true,
-      borderRadius: BorderRadius.circular(12),
-      decoration: _decoracao(),
-      style: StyleProjetos.pesquisa.copyWith(fontSize: 14),
-      items: [
-        for (final o in opcoes) DropdownMenuItem(value: o, child: Text(o)),
-      ],
-      onChanged: (v) {
-        if (v != null) aoMudar(v);
-      },
+  void _limpar() {
+    setState(() {
+      _status = {};
+      _conclusaoAte = null;
+      _tipo = null;
+      _membros = {};
+      _cliente.clear();
+      _buscaMembro.clear();
+    });
+    _provider.aplicarFiltros(FiltrosProjeto.vazio);
+  }
+
+  Future<void> _escolherData() async {
+    final hoje = DateTime.now();
+    final escolhida = await showDatePicker(
+      context: context,
+      initialDate: _conclusaoAte ?? hoje,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(hoje.year + 20),
+      helpText: 'Conclusão até',
+      builder: (context, filho) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(
+                primary: StyleProjetos.azulEscuro,
+                onPrimary: Colors.white,
+                surfaceTint: Colors.transparent,
+              ),
+        ),
+        child: filho!,
+      ),
     );
+    if (escolhida != null) setState(() => _conclusaoAte = escolhida);
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          const Icon(Icons.filter_alt, color: StyleProjetos.laranja),
-          const SizedBox(width: 8),
-          Text('Filtros', style: StyleProjetos.subtitulo),
-        ],
-      ),
-      content: SizedBox(
-        width: 360,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _rotulo('Tipo'),
-            _dropdown(
-              // Tipos que existem nos projetos carregados.
-              ['Todos', ...context.read<ProjetosProvider>().tiposDisponiveis],
-              _tipo,
-              (v) => setState(() => _tipo = v),
-            ),
-            const SizedBox(height: 16),
-            _rotulo('Status'),
-            _dropdown(
-                _opcoesStatus, _status, (v) => setState(() => _status = v)),
-            const SizedBox(height: 16),
-            _rotulo('Cliente'),
-            TextField(
-              controller: _cliente,
-              style: StyleProjetos.pesquisa.copyWith(fontSize: 14),
-              decoration:
-                  _decoracao(hint: 'Nome do cliente', icone: Icons.business),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, _semFiltros),
-          style: TextButton.styleFrom(
-              foregroundColor: StyleProjetos.textoSecundario),
-          child: const Text('Limpar filtros'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop<FiltrosProjeto>(context, (
-            tipo: _tipo,
-            status: _status,
-            cliente: _cliente.text.trim(),
-          )),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: StyleProjetos.laranja,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    final tela = MediaQuery.of(context).size;
+    final esquerda = widget.ancora.left
+        .clamp(16.0, (tela.width - _largura - 16).clamp(16.0, tela.width));
+    final topo = widget.ancora.bottom + 12;
+
+    return Stack(
+      children: [
+        // Clique fora fecha.
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: CamadaModal.fechar,
           ),
-          child: const Text('Aplicar'),
+        ),
+        Positioned(
+          left: esquerda,
+          top: topo,
+          width: _largura,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: tela.height - topo - 16),
+            child: _cartao(),
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _cartao() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x1F0F1030), blurRadius: 30, offset: Offset(0, 12)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Material(
+            color: Colors.white.withOpacity(0.82),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+              side: BorderSide(color: Colors.white.withOpacity(0.9)),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(28, 20, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _cabecalho(),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _linhaStatus(),
+                        const SizedBox(height: 16),
+                        _pilulaData(),
+                        const SizedBox(height: 10),
+                        _pilulaTipo(),
+                        const SizedBox(height: 10),
+                        _pilulaCliente(),
+                        const SizedBox(height: 10),
+                        _pilulaMembros(),
+                        const SizedBox(height: 22),
+                        _rodape(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cabecalho() => Row(
+        children: [
+          Expanded(
+            child: Text('Filtrar projetos',
+                style: _fonte(tamanho: 17, peso: FontWeight.w600)),
+          ),
+          IconButton(
+            tooltip: 'Fechar',
+            onPressed: CamadaModal.fechar,
+            icon: const Icon(Icons.close_rounded,
+                size: 26, color: StyleProjetos.laranja),
+          ),
+        ],
+      );
+
+  Widget _linhaStatus() => Row(
+        children: [
+          Text('Status:', style: _fonte(peso: FontWeight.w500)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final s in _opcoesStatus)
+                  _ChipStatus(
+                    rotulo: s,
+                    marcado: _status.contains(s),
+                    aoTocar: () => setState(() {
+                      _status = {..._status};
+                      if (!_status.remove(s)) _status.add(s);
+                    }),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+  Widget _pilulaData() => _Pilula(
+        aoTocar: _escolherData,
+        icone: Icons.calendar_month_rounded,
+        filho: Text.rich(
+          TextSpan(children: [
+            const TextSpan(text: 'Data: '),
+            TextSpan(
+              text: _conclusaoAte == null
+                  ? 'qualquer conclusão'
+                  : 'Conclusão até ${_data(_conclusaoAte!)}',
+              style: _conclusaoAte == null
+                  ? _fonte(cor: StyleProjetos.textoSecundario)
+                  : null,
+            ),
+          ]),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: _fonte(),
+        ),
+      );
+
+  Widget _pilulaTipo() {
+    final tipos = _provider.tiposDisponiveis;
+    return PopupMenuButton<String?>(
+      tooltip: '',
+      position: PopupMenuPosition.under,
+      color: Colors.white,
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      constraints: const BoxConstraints(minWidth: 300, maxHeight: 320),
+      onSelected: (v) => setState(() => _tipo = v),
+      itemBuilder: (_) => [
+        PopupMenuItem<String?>(
+            value: null, child: Text('Todos', style: _fonte())),
+        for (final t in tipos)
+          PopupMenuItem<String?>(value: t, child: Text(t, style: _fonte())),
+      ],
+      child: _Pilula(
+        icone: Icons.keyboard_arrow_down_rounded,
+        filho: Text.rich(
+          TextSpan(children: [
+            const TextSpan(text: 'Tipo: '),
+            TextSpan(
+              text: _tipo ?? 'Todos',
+              style: _tipo == null
+                  ? _fonte(cor: StyleProjetos.textoSecundario)
+                  : null,
+            ),
+          ]),
+          style: _fonte(),
+        ),
+      ),
+    );
+  }
+
+  Widget _pilulaCliente() {
+    final termo = _cliente.text.trim().toLowerCase();
+    final sugestoes = !_focoCliente.hasFocus
+        ? const <String>[]
+        : _provider.clientesDisponiveis
+            .where((c) =>
+                c.toLowerCase().contains(termo) && c.toLowerCase() != termo)
+            .take(5)
+            .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Pilula(
+          icone: Icons.search_rounded,
+          aoTocar: _focoCliente.requestFocus,
+          filho: _CampoNaPilula(
+            rotulo: 'Cliente: ',
+            controle: _cliente,
+            foco: _focoCliente,
+            hint: 'todos',
+            aoMudar: (_) => setState(() {}),
+          ),
+        ),
+        if (sugestoes.isNotEmpty)
+          _Sugestoes(
+            itens: sugestoes,
+            aoEscolher: (c) => setState(() {
+              _cliente.text = c;
+              _focoCliente.unfocus();
+            }),
+          ),
+      ],
+    );
+  }
+
+  Widget _pilulaMembros() {
+    final termo = _buscaMembro.text.trim().toLowerCase();
+    final sugestoes = !_focoMembro.hasFocus
+        ? const <MembroProjeto>[]
+        : _provider.membrosDisponiveis
+            .where((m) =>
+                !_membros.contains(m.id) &&
+                m.nome.toLowerCase().contains(termo))
+            .take(5)
+            .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Pilula(
+          icone: Icons.search_rounded,
+          aoTocar: _focoMembro.requestFocus,
+          filho: _CampoNaPilula(
+            rotulo: 'Membros: ',
+            controle: _buscaMembro,
+            foco: _focoMembro,
+            hint: '',
+            aoMudar: (_) => setState(() {}),
+          ),
+        ),
+        if (sugestoes.isNotEmpty)
+          _Sugestoes(
+            itens: [for (final m in sugestoes) m.nome],
+            aoEscolher: (nome) => setState(() {
+              final m = sugestoes.firstWhere((m) => m.nome == nome);
+              _membros = {..._membros, m.id};
+              _buscaMembro.clear();
+            }),
+          ),
+        if (_membros.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final id in _membros)
+                _ChipMembro(
+                  nome: _provider.nomeDoMembro(id),
+                  aoRemover: () =>
+                      setState(() => _membros = {..._membros}..remove(id)),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _rodape() => Row(
+        children: [
+          TextButton.icon(
+            onPressed: _limpar,
+            style: TextButton.styleFrom(
+                foregroundColor: StyleProjetos.textoSecundario),
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            label: Text('Limpar filtro',
+                style: _fonte(tamanho: 14, cor: StyleProjetos.textoSecundario)),
+          ),
+          const Spacer(),
+          ElevatedButton.icon(
+            onPressed: _filtrar,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: StyleProjetos.azulEscuro,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              minimumSize: const Size(130, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.tune_rounded, size: 18),
+            label: Text('Filtrar',
+                style: _fonte(
+                    tamanho: 15, peso: FontWeight.w600, cor: Colors.white)),
+          ),
+        ],
+      );
+}
+
+/// Pílula com contorno fino e ícone à direita (campos do filtro).
+class _Pilula extends StatelessWidget {
+  const _Pilula({required this.filho, required this.icone, this.aoTocar});
+
+  final Widget filho;
+  final IconData icone;
+  final VoidCallback? aoTocar;
+
+  @override
+  Widget build(BuildContext context) {
+    final conteudo = Container(
+      height: 46,
+      padding: const EdgeInsets.only(left: 18, right: 14),
+      decoration: ShapeDecoration(
+        color: Colors.white.withOpacity(0.55),
+        shape: const StadiumBorder(side: BorderSide(color: _bordaPilula)),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: filho),
+          const SizedBox(width: 10),
+          Icon(icone, size: 22, color: StyleProjetos.azulEscuro),
+        ],
+      ),
+    );
+    if (aoTocar == null) return conteudo;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(onTap: aoTocar, child: conteudo),
+    );
+  }
+}
+
+/// "Rótulo: campo" dentro da pílula.
+class _CampoNaPilula extends StatelessWidget {
+  const _CampoNaPilula({
+    required this.rotulo,
+    required this.controle,
+    required this.foco,
+    required this.hint,
+    required this.aoMudar,
+  });
+
+  final String rotulo;
+  final TextEditingController controle;
+  final FocusNode foco;
+  final String hint;
+  final ValueChanged<String> aoMudar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(rotulo, style: _fonte()),
+        Expanded(
+          child: TextField(
+            controller: controle,
+            focusNode: foco,
+            onChanged: aoMudar,
+            maxLines: 1,
+            style: _fonte(),
+            strutStyle: const StrutStyle(forceStrutHeight: true, height: 1.2),
+            cursorColor: StyleProjetos.azulEscuro,
+            inputFormatters: [LengthLimitingTextInputFormatter(80)],
+            decoration: InputDecoration(
+              isCollapsed: true,
+              border: InputBorder.none,
+              hintText: hint,
+              hintStyle: _fonte(cor: StyleProjetos.textoSecundario),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Sugestões que aparecem embaixo de uma pílula de busca.
+class _Sugestoes extends StatelessWidget {
+  const _Sugestoes({required this.itens, required this.aoEscolher});
+
+  final List<String> itens;
+  final ValueChanged<String> aoEscolher;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0x240F1030)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final item in itens)
+            InkWell(
+              onTap: () => aoEscolher(item),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                child: Text(item,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _fonte(tamanho: 14)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chip de status: laranja quando marcado, contorno cinza quando não.
+class _ChipStatus extends StatelessWidget {
+  const _ChipStatus(
+      {required this.rotulo, required this.marcado, required this.aoTocar});
+
+  final String rotulo;
+  final bool marcado;
+  final VoidCallback aoTocar;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: aoTocar,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: ShapeDecoration(
+            color: marcado
+                ? StyleProjetos.laranja.withOpacity(0.08)
+                : Colors.white.withOpacity(0.5),
+            shape: StadiumBorder(
+              side: BorderSide(
+                  color: marcado ? StyleProjetos.laranja : _bordaPilula),
+            ),
+          ),
+          child: Text(
+            rotulo,
+            style: _fonte(
+              tamanho: 13,
+              peso: marcado ? FontWeight.w600 : FontWeight.w400,
+              cor: marcado
+                  ? StyleProjetos.laranja
+                  : StyleProjetos.textoSecundario,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Membro escolhido no filtro (toque no X remove).
+class _ChipMembro extends StatelessWidget {
+  const _ChipMembro({required this.nome, required this.aoRemover});
+
+  final String nome;
+  final VoidCallback aoRemover;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: 12, right: 4, top: 3, bottom: 3),
+      decoration: ShapeDecoration(
+        color: Colors.white.withOpacity(0.5),
+        shape: const StadiumBorder(side: BorderSide(color: _bordaPilula)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(nome,
+              style: _fonte(tamanho: 13, cor: StyleProjetos.textoSecundario)),
+          InkWell(
+            onTap: aoRemover,
+            customBorder: const CircleBorder(),
+            child: const Padding(
+              padding: EdgeInsets.all(3),
+              child: Icon(Icons.close_rounded,
+                  size: 14, color: StyleProjetos.textoSecundario),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
