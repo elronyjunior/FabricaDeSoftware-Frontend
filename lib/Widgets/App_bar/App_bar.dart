@@ -14,7 +14,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         title,
         style: TextStyle(fontWeight: FontWeight.w700),
       ),
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      // Transparente: o fundo é o degradê do LayoutPrincipal.
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      scrolledUnderElevation: 0,
       elevation: 0,
       iconTheme: IconThemeData(
         size: 40,

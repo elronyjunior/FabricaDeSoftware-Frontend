@@ -21,7 +21,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
       create: (_) => RelatoriosProvider()..carregarDados(),
       child: Scaffold(
         drawer: BarraLateral.drawer(context),
-        backgroundColor: Colors.grey[50],
+        backgroundColor: Colors.transparent, // fundo do LayoutPrincipal
         appBar: CustomAppBar(title:"Realtórios Gerais" ),
         body: Consumer<RelatoriosProvider>(
           builder: (context, provider, child) {
