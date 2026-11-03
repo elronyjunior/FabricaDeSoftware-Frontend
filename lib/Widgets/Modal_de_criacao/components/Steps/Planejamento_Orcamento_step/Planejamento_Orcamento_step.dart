@@ -1,9 +1,9 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Modal_step.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Configuracao_Inicial_Projeto_step/components.dart';
 import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:fabrica_software_app/config/projeto_dto.dart';
 import 'package:fabrica_software_app/services/api_service.dart';
@@ -14,7 +14,11 @@ class PlanejamentoOrcamentoStep extends ModalStep {
   String get title => 'Planejamento & Orçamento';
 
   @override
-  String get tabName => 'Finalização';
+  String get tabName => 'Planejamento';
+
+  @override
+  String get ajuda =>
+      'Escolha o período do projeto no calendário (início e fim) e informe o orçamento, ou peça uma estimativa à IA.';
 
   @override
   IconData get icon => FontAwesomeIcons.calendarCheck;
@@ -23,6 +27,10 @@ class PlanejamentoOrcamentoStep extends ModalStep {
   List<Color> get cores => <Color>[Colors.orangeAccent, Colors.deepOrange];
 
   final GlobalKey<_PlanejamentoContentState> _contentKey = GlobalKey();
+
+  /// Envia o projeto. `true` quando foi criado (quem chamou fecha o modal).
+  Future<bool> concluir() async =>
+      await _contentKey.currentState?.finalizarProjeto() ?? false;
 
   @override
   Widget buildBody(BuildContext context) {
@@ -58,8 +66,9 @@ class PlanejamentoOrcamentoStep extends ModalStep {
               const SizedBox(width: 12),
               ElevatedButton(
                 onPressed: () async {
-                  if (_contentKey.currentState != null) {
-                    await _contentKey.currentState!.finalizarProjeto();
+                  if (await concluir() && context.mounted) {
+                    Navigator.pop(context);
+                    avisar(context, "Projeto criado!", tipo: TipoAviso.sucesso);
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -115,50 +124,21 @@ class _PlanejamentoContentState extends State<_PlanejamentoContent> {
     projetoDraft.complexidade = null;
   }
 
-  Future<void> _selectDate(TextEditingController ctrl, bool isStart) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF2962FF)),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      if (!isStart && _dataInicio != null && picked.isBefore(_dataInicio!)) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Data final inválida."),
-            backgroundColor: Colors.red));
-        return;
-      }
-      if (isStart && _dataFim != null && picked.isAfter(_dataFim!)) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Data inicial inválida."),
-            backgroundColor: Colors.red));
-        return;
-      }
-
-      setState(() {
-        ctrl.text = DateFormat('dd/MM/yyyy').format(picked);
-        if (isStart)
-          _dataInicio = picked;
-        else
-          _dataFim = picked;
-      });
-    }
+  // O campo de período devolve início e fim juntos; os controllers seguem
+  // preenchidos porque a validação de finalizarProjeto confere o texto deles.
+  void _mudarPeriodo(DateTime? inicio, DateTime? fim) {
+    setState(() {
+      _dataInicio = inicio;
+      _dataFim = fim;
+      _dataInicioCtrl.text = inicio == null ? '' : formatarDataIdv(inicio);
+      _dataFimCtrl.text = fim == null ? '' : formatarDataIdv(fim);
+    });
   }
 
   Future<void> _estimarOrcamentoIA() async {
     if (_dataInicio == null || _dataFim == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Defina as datas.")));
+      avisar(context, 'Escolha o período do projeto antes de estimar.',
+          tipo: TipoAviso.info);
       return;
     }
 
@@ -183,25 +163,28 @@ class _PlanejamentoContentState extends State<_PlanejamentoContent> {
             ? bruto.toDouble()
             : double.tryParse(bruto.toString()) ?? 0.0;
         String complexidade = resultado['complexidade'] ?? 'media';
-        _orcamentoCtrl.text = valor.toStringAsFixed(2);
+        _orcamentoCtrl.text = formatarMoedaBr(valor);
         projetoDraft.orcamentoEstimado = valor;
         projetoDraft.complexidade = complexidade;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erro IA: $e"), backgroundColor: Colors.red));
+      if (mounted) avisar(context, mensagemErroIa(e));
     } finally {
       setState(() => _isCalculatingIA = false);
     }
   }
 
-  Future<void> finalizarProjeto() async {
-    if (_dataInicioCtrl.text.isEmpty ||
-        _dataFimCtrl.text.isEmpty ||
-        _orcamentoCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Preencha todos os campos.")));
-      return;
+  /// Envia o projeto e devolve `true` quando ele foi criado. Fechar o modal
+  /// e avisar o sucesso fica com quem chamou.
+  Future<bool> finalizarProjeto() async {
+    if (_dataInicioCtrl.text.isEmpty || _dataFimCtrl.text.isEmpty) {
+      avisar(context, 'Escolha o período do projeto no calendário.');
+      return false;
+    }
+    final orcamento = lerMoedaBr(_orcamentoCtrl.text);
+    if (orcamento == null || orcamento <= 0) {
+      avisar(context, 'Informe um orçamento maior que zero.');
+      return false;
     }
 
     setState(() => _isSending = true);
@@ -216,9 +199,7 @@ class _PlanejamentoContentState extends State<_PlanejamentoContent> {
 
       projetoDraft.dataInicio = _dataInicio;
       projetoDraft.dataFinalPrevista = _dataFim;
-      String valorLimpo =
-          _orcamentoCtrl.text.replaceAll(RegExp(r'[^0-9.]'), '');
-      projetoDraft.orcamentoEstimado = double.tryParse(valorLimpo) ?? 0.0;
+      projetoDraft.orcamentoEstimado = orcamento;
       if (projetoDraft.complexidade == null)
         projetoDraft.complexidade = 'media';
 
@@ -226,17 +207,13 @@ class _PlanejamentoContentState extends State<_PlanejamentoContent> {
 
       await ApiService.criarProjetoCompleto(payload);
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Projeto criado!"), backgroundColor: Colors.green));
-        projetoDraft.clear();
-      }
+      projetoDraft.clear();
+      return true;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text("Erro ao salvar: $e"), backgroundColor: Colors.red));
+        avisar(context, 'Não foi possível criar o projeto: $e');
       }
+      return false;
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -249,99 +226,48 @@ class _PlanejamentoContentState extends State<_PlanejamentoContent> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8)),
-          child: Row(children: const [
-            Icon(Icons.calendar_month_outlined, color: Colors.orange, size: 20),
-            SizedBox(width: 10),
-            Text("Planejamento & Orçamento",
-                style: TextStyle(
-                    color: Colors.deepOrange, fontWeight: FontWeight.w500))
-          ]),
+        ComponentsConfiguracaoInicalProjeto.buildLabel('Período do projeto',
+            isRequired: true),
+        PeriodoIdv(
+          inicio: _dataInicio,
+          fim: _dataFim,
+          aoMudar: _mudarPeriodo,
         ),
         const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  ComponentsConfiguracaoInicalProjeto.buildLabel(
-                      "Data de Início",
-                      isRequired: true),
-                  GestureDetector(
-                      onTap: () => _selectDate(_dataInicioCtrl, true),
-                      child: AbsorbPointer(
-                          child: Container(
-                              decoration: ComponentsConfiguracaoInicalProjeto
-                                  .inputBoxDecoration,
-                              child: TextField(
-                                  controller: _dataInicioCtrl,
-                                  decoration:
-                                      ComponentsConfiguracaoInicalProjeto
-                                          .inputDecoration("Selecionar",
-                                              icon: Icons.calendar_today))))),
-                ])),
-            const SizedBox(width: 16),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  ComponentsConfiguracaoInicalProjeto.buildLabel("Data Final",
-                      isRequired: true),
-                  GestureDetector(
-                      onTap: () => _selectDate(_dataFimCtrl, false),
-                      child: AbsorbPointer(
-                          child: Container(
-                              decoration: ComponentsConfiguracaoInicalProjeto
-                                  .inputBoxDecoration,
-                              child: TextField(
-                                  controller: _dataFimCtrl,
-                                  decoration:
-                                      ComponentsConfiguracaoInicalProjeto
-                                          .inputDecoration("Selecionar",
-                                              icon: Icons.event))))),
-                ])),
-          ],
-        ),
-        const SizedBox(height: 20),
-        ComponentsConfiguracaoInicalProjeto.buildLabel("Orçamento Estimado",
+        ComponentsConfiguracaoInicalProjeto.buildLabel('Orçamento estimado',
             isRequired: true),
         Row(
           children: [
             Expanded(
-                child: Container(
-                    decoration:
-                        ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-                    child: TextField(
-                        controller: _orcamentoCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration:
-                            ComponentsConfiguracaoInicalProjeto.inputDecoration(
-                                "R\$ 0.00")))),
+              child: Container(
+                height: 50,
+                decoration:
+                    ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
+                child: TextField(
+                  controller: _orcamentoCtrl,
+                  keyboardType: TextInputType.number,
+                  // Só números; a vírgula e os pontos entram sozinhos.
+                  inputFormatters: [FormatoMoedaBr()],
+                  style: fonteIdv(),
+                  textAlignVertical: TextAlignVertical.center,
+                  decoration:
+                      ComponentsConfiguracaoInicalProjeto.inputDecoration(
+                              '0,00')
+                          .copyWith(
+                    prefixText: 'R\$  ',
+                    prefixStyle: fonteIdv(cor: CoresIdv.textoSecundario),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(width: 10),
-            ElevatedButton.icon(
-              onPressed: _isCalculatingIA ? null : _estimarOrcamentoIA,
-              icon: _isCalculatingIA
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
-                  : const Icon(FontAwesomeIcons.wandMagicSparkles, size: 16),
-              label: const Text("IA"),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8))),
-            )
+            BotaoIa(
+              rotulo: 'Estimar com IA',
+              rotuloCarregando: 'Estimando...',
+              carregando: _isCalculatingIA,
+              aoTocar: _estimarOrcamentoIA,
+              larguraTotal: false,
+            ),
           ],
         ),
       ],
