@@ -6,6 +6,7 @@ import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.d
 import 'package:fabrica_software_app/providers/recursos_provider.dart';
 import 'package:fabrica_software_app/providers/tecnologias_provider.dart';
 import 'package:fabrica_software_app/screens/Cadastro/Cadastro_screen.dart';
+import 'package:fabrica_software_app/screens/RecuperarSenha/recuperar_senha_screen.dart';
 import 'package:fabrica_software_app/screens/Account/Account.dart';
 import 'package:fabrica_software_app/screens/Clientes/Clientes.dart';
 import 'package:fabrica_software_app/screens/Equipe/Gerenciar_Equipes_Screen.dart';
@@ -68,6 +69,7 @@ class MyApp extends StatelessWidget {
         routes: {
           '/':(context){return const Loginscreen();},
           '/Cadastro':(context){return const CadastroScreen();},
+          RotasApp.recuperarSenha: (context) => const RecuperarSenhaScreen(),
           '/ApiTest':(context){return const ApiTestScreen();},
           '/Gerenciar_Projetos':(context){return const GerenciarProjetos();},
           '/Account':(context){return const Account();},
@@ -110,11 +112,20 @@ class TransicaoSuave extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    // Login, cadastro e recuperar senha têm o mesmo fundo: a nova entra
+    // devagar por cima e a anterior só some no fim, então o fundo fica
+    // parado e só o card troca (sem o escurecido no meio).
+    final entradaLogin = RotasApp.semMenu.contains(route.settings.name);
     final entrada = CurvedAnimation(
-        parent: animation, curve: const Interval(0.2, 1, curve: Curves.easeOut));
+        parent: animation,
+        curve: entradaLogin
+            ? Curves.easeInOutCubic
+            : const Interval(0.2, 1, curve: Curves.easeOut));
     final saida = CurvedAnimation(
         parent: secondaryAnimation,
-        curve: const Interval(0, 0.6, curve: Curves.easeOut));
+        curve: entradaLogin
+            ? const Interval(0.7, 1, curve: Curves.easeOut)
+            : const Interval(0, 0.6, curve: Curves.easeOut));
     return FadeTransition(
       opacity: entrada,
       child: FadeTransition(opacity: ReverseAnimation(saida), child: child),

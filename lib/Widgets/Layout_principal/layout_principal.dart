@@ -14,6 +14,7 @@ class RotasApp {
 
   static const login = '/';
   static const cadastro = '/Cadastro';
+  static const recuperarSenha = '/RecuperarSenha';
   static const projetos = '/Gerenciar_Projetos';
   static const equipes = '/Equipes';
   static const relatorios = '/Relatorios';
@@ -33,7 +34,7 @@ class RotasApp {
   ];
 
   /// Telas que não exibem o menu lateral.
-  static const semMenu = {login, cadastro};
+  static const semMenu = {login, cadastro, recuperarSenha};
 }
 
 /// Chave do Navigator principal: permite navegar a partir do menu,

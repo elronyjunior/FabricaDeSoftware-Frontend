@@ -93,11 +93,10 @@ class _CadastroScreenState extends State<CadastroScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const LogoTegra(),
-            const SizedBox(height: 4),
-            Text('Crie sua conta',
-                textAlign: TextAlign.center, style: StyleLogin.titulo),
-            const SizedBox(height: 23),
+            const CabecalhoAuth(
+              titulo: 'Crie sua conta',
+              descricao: 'Preencha seus dados para começar a usar o painel.',
+            ),
             CampoVidro(
               controller: _nomeController,
               hint: 'Nome',
@@ -106,7 +105,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
               acao: TextInputAction.next,
               autofill: const [AutofillHints.name],
             ),
-            const SizedBox(height: 27),
+            const SizedBox(height: CabecalhoAuth.espacoCampos),
             CampoVidro(
               controller: _emailController,
               hint: 'Email',
@@ -115,7 +114,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
               acao: TextInputAction.next,
               autofill: const [AutofillHints.email],
             ),
-            const SizedBox(height: 27),
+            const SizedBox(height: CabecalhoAuth.espacoCampos),
             CampoVidro(
               controller: _senhaController,
               hint: 'Senha',
@@ -125,13 +124,13 @@ class _CadastroScreenState extends State<CadastroScreen> {
               autofill: const [AutofillHints.newPassword],
               aoEnviar: (_) => _isLoading ? null : _cadastrar(),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 24),
             BotaoLaranja(
               texto: 'Cadastrar',
               carregando: _isLoading,
               onPressed: _isLoading ? null : _cadastrar,
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 10),
             Wrap(
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
@@ -143,9 +142,9 @@ class _CadastroScreenState extends State<CadastroScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             const DivisorOu(),
-            const SizedBox(height: 25),
+            const SizedBox(height: 16),
             BotaoGoogle(onPressed: _isLoading ? null : _entrarComGoogle),
           ],
         ),

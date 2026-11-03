@@ -21,11 +21,15 @@ class StyleLogin {
   static const Color textoSecundario = Color(0xFFE4E4F0);
 
   // ---------------- Medidas ----------------
-  static const double cardLargura = 445;
-  static const double cardRaio = 44;
-  static const EdgeInsets cardPadding = EdgeInsets.fromLTRB(49, 40, 49, 50);
+  /// Card quase quadrado (como o de Recuperar senha), igual nas três telas.
+  static const double cardLargura = 560;
 
-  static const double campoLargura = 330;
+  /// Altura fixa do card (cabe o cadastro, a tela com mais campos).
+  static const double cardAltura = 600;
+  static const double cardRaio = 44;
+  static const EdgeInsets cardPadding = EdgeInsets.fromLTRB(48, 28, 48, 28);
+
+  static const double campoLargura = 410;
   static const double campoAltura = 55;
   static const double raio = 10;
 
