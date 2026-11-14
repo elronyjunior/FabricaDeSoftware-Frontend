@@ -12,6 +12,9 @@ import 'package:flutter_svg/svg.dart';
 /// Estrutura completa da tela: fundo de partículas, card de vidro
 /// centralizado e ícones de tema/ajuda no canto inferior direito.
 class AuthScaffold extends StatelessWidget {
+  /// Quanto da altura da janela o card ocupa (menor = card menor).
+  static const _alturaNaTela = 0.68;
+
   const AuthScaffold({
     super.key,
     required this.child,
@@ -31,12 +34,29 @@ class AuthScaffold extends StatelessWidget {
         children: [
           const Positioned.fill(child: _FundoAuth()),
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: _CardVidro(child: child),
-              ),
-            ),
+            // Login, cadastro e recuperar senha usam o mesmo card: mesmo
+            // tamanho e mesma escala, que depende só da janela (cerca de 68%
+            // da altura). O conteúdo fica centralizado dentro dele.
+            child: LayoutBuilder(builder: (context, c) {
+              final escala = [
+                1.0,
+                c.maxHeight * _alturaNaTela / StyleLogin.cardAltura,
+                (c.maxWidth - 32) / StyleLogin.cardLargura,
+              ].reduce((a, b) => a < b ? a : b).clamp(0.3, 1.0);
+              return Center(
+                child: SizedBox(
+                  width: StyleLogin.cardLargura * escala,
+                  height: StyleLogin.cardAltura * escala,
+                  child: FittedBox(
+                    child: SizedBox(
+                      width: StyleLogin.cardLargura,
+                      height: StyleLogin.cardAltura,
+                      child: _CardVidro(child: Center(child: child)),
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
           Positioned(
             right: 56,
@@ -48,17 +68,46 @@ class AuthScaffold extends StatelessWidget {
                   dica: 'Alternar tema',
                   onTap: onAlternarTema ?? () {},
                 ),
-                const SizedBox(width: 20),
-                _IconeAcao(
-                  icone: Icons.help,
-                  dica: 'Ajuda',
-                  onTap: onAjuda ?? () {},
-                ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Topo das telas de entrada (login, cadastro e recuperar senha): logo,
+/// título e uma frase curta de explicação, sempre com os mesmos espaços.
+class CabecalhoAuth extends StatelessWidget {
+  const CabecalhoAuth(
+      {super.key, required this.titulo, required this.descricao});
+
+  final String titulo;
+  final String descricao;
+
+  /// Espaço entre os campos, igual nas três telas.
+  static const espacoCampos = 16.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const LogoTegra(),
+        const SizedBox(height: 4),
+        Text(titulo, textAlign: TextAlign.center, style: StyleLogin.titulo),
+        const SizedBox(height: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: StyleLogin.campoLargura),
+          child: Text(
+            descricao,
+            textAlign: TextAlign.center,
+            style: StyleLogin.rodape.copyWith(fontSize: 13, height: 1.4),
+          ),
+        ),
+        const SizedBox(height: 26),
+      ],
     );
   }
 }
@@ -135,7 +184,10 @@ class CampoVidro extends StatelessWidget {
             hintText: hint,
             hintStyle: StyleLogin.hint,
             filled: true,
-            fillColor: Colors.white.withOpacity(0.10),
+            fillColor: StyleLogin.fundoCampo,
+            // Sem o véu do Material no hover/foco (escurecia o campo).
+            hoverColor: Colors.transparent,
+            focusColor: Colors.transparent,
             isDense: true,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 6, vertical: 17),
@@ -303,10 +355,6 @@ class _CardVidro extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: raio,
             gradient: StyleLogin.gradienteCard,
-            border: Border.all(
-              color: Colors.white.withOpacity(0.75),
-              width: 1.2,
-            ),
           ),
           child: child,
         ),

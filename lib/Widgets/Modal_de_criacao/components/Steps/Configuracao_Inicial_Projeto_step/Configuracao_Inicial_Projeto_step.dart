@@ -1,18 +1,25 @@
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Modal_step.dart';
 import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
-import 'components.dart'; 
+import 'components.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/config/projeto_dto.dart';
 import 'package:fabrica_software_app/services/api_service.dart';
+import 'package:fabrica_software_app/providers/projetos_provider.dart';
 
 class ConfiguracaoInicialProjetoStep extends ModalStep {
   @override
   String get title => 'Configuração inicial do projeto';
 
   @override
-  String get tabName => 'Informações Gerais';
+  String get tabName => 'Informações';
+
+  @override
+  String get ajuda =>
+      'Dados gerais do projeto: nome, tipo, modelo, cliente e tecnologias. Os campos com * são obrigatórios.';
 
   @override
   IconData get icon => FontAwesomeIcons.gears;
@@ -21,6 +28,9 @@ class ConfiguracaoInicialProjetoStep extends ModalStep {
   List<Color> get cores => <Color>[const Color.fromARGB(255, 4, 187, 233)];
 
   final GlobalKey<_ConfiguracaoContentState> _contentKey = GlobalKey();
+
+  @override
+  bool validar() => _contentKey.currentState?.validar() ?? true;
 
   @override
   Widget buildBody(BuildContext context) {
@@ -45,7 +55,8 @@ class ConfiguracaoInicialProjetoStep extends ModalStep {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2962FF),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: Row(
@@ -71,34 +82,50 @@ class _ConfiguracaoContent extends StatefulWidget {
 
 class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Inicializamos os controllers já com os dados do DTO para garantir que apareçam
   late TextEditingController _nomeCtrl;
   late TextEditingController _descCtrl;
   late TextEditingController _metodologiaCtrl;
-  
+
   List<dynamic> _listaClientesDB = [];
   List<dynamic> _listaTecnologiasDB = [];
 
   Map<String, dynamic>? _clienteSelecionado;
   List<Map<String, dynamic>> _tecnologiasSelecionadas = [];
-  
+
   String? _tipoSelecionado;
-  final List<String> _opcoesTipo = ['Web', 'Mobile', 'Desktop', 'API', 'Híbrido', 'Outro'];
+  // Mesma lista do filtro: padrão + personalizados já salvos + "Outro".
+  late final List<String> _opcoesTipo = [
+    ...context.read<ProjetosProvider>().tiposDisponiveis
+  ];
+
+  /// Tipo escrito quando a opção "Outro" está escolhida.
+  final _tipoOutroCtrl = TextEditingController();
+  bool get _escolheuOutro => _tipoSelecionado == tipoOutro;
 
   String? _modeloSelecionado;
-  final List<String> _opcoesModelo = ['SaaS', 'Marketplace', 'E-commerce', 'Institucional', 'Interno', 'Outros'];
+  final List<String> _opcoesModelo = [
+    'SaaS',
+    'Marketplace',
+    'E-commerce',
+    'Institucional',
+    'Interno',
+    'Outros'
+  ];
 
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    
+
     // 1. Vínculo Imediato dos Dados Básicos (Evita delay visual)
     _nomeCtrl = TextEditingController(text: projetoDraft.nome ?? '');
     _descCtrl = TextEditingController(text: projetoDraft.descricao ?? '');
-    _metodologiaCtrl = TextEditingController(text: projetoDraft.metodologia ?? ''); // <--- Aqui garante a Metodologia
+    _metodologiaCtrl = TextEditingController(
+        text:
+            projetoDraft.metodologia ?? ''); // <--- Aqui garante a Metodologia
 
     _carregarDadosAsync();
   }
@@ -108,22 +135,22 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
     _nomeCtrl.dispose();
     _descCtrl.dispose();
     _metodologiaCtrl.dispose();
+    _tipoOutroCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _carregarDadosAsync() async {
     try {
       // Busca listas gerais
-      final results = await Future.wait([
-        ApiService.getClientes(),
-        ApiService.getTecnologias()
-      ]);
+      final results = await Future.wait(
+          [ApiService.getClientes(), ApiService.getTecnologias()]);
 
       List<int> idsTecnologiasDoProjeto = [];
-      
+
       // Se for EDIÇÃO (tem ID), busca as tecnologias específicas desse projeto no banco
       if (projetoDraft.id != null) {
-        idsTecnologiasDoProjeto = await ApiService.getTecnologiasDoProjeto(projetoDraft.id!);
+        idsTecnologiasDoProjeto =
+            await ApiService.getTecnologiasDoProjeto(projetoDraft.id!);
       }
 
       if (mounted) {
@@ -133,41 +160,45 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
 
           // 2. Configura Dropdowns (Tipo e Modelo)
           if (projetoDraft.tipo != null) {
-             _tipoSelecionado = _encontrarOpcao(projetoDraft.tipo!, _opcoesTipo);
+            _tipoSelecionado = _encontrarOpcao(projetoDraft.tipo!, _opcoesTipo);
           }
           if (projetoDraft.modelo != null) {
-             _modeloSelecionado = _encontrarOpcao(projetoDraft.modelo!, _opcoesModelo);
+            _modeloSelecionado =
+                _encontrarOpcao(projetoDraft.modelo!, _opcoesModelo);
           }
 
           // 3. Configura Cliente
-          if (projetoDraft.cliente != null && projetoDraft.cliente!['id'] != null) {
+          if (projetoDraft.cliente != null &&
+              projetoDraft.cliente!['id'] != null) {
             try {
               final idDraft = projetoDraft.cliente!['id'].toString();
               _clienteSelecionado = _listaClientesDB.firstWhere(
-                (c) => c['id'].toString() == idDraft,
-                orElse: () => null
-              );
+                  (c) => c['id'].toString() == idDraft,
+                  orElse: () => null);
               // Atualiza o DTO para garantir consistência
-              if (_clienteSelecionado != null) projetoDraft.cliente = _clienteSelecionado;
+              if (_clienteSelecionado != null)
+                projetoDraft.cliente = _clienteSelecionado;
             } catch (_) {}
           }
 
           // 4. Configura Tecnologias (A Mágica da Edição)
           if (projetoDraft.id != null && idsTecnologiasDoProjeto.isNotEmpty) {
             // Filtra da lista geral apenas as que o projeto tem
+            // Compara como texto: os ids podem vir como número ou texto.
+            final ids = idsTecnologiasDoProjeto.map((id) => '$id').toSet();
             _tecnologiasSelecionadas = _listaTecnologiasDB
-                .where((tech) => idsTecnologiasDoProjeto.contains(tech['id']))
+                .where((tech) => ids.contains('${tech['id']}'))
                 .map((e) => Map<String, dynamic>.from(e)) // Cria cópia segura
                 .toList();
-            
+
             // Salva no DTO para persistir
             projetoDraft.tecnologias = _tecnologiasSelecionadas;
-          } 
+          }
           // Se for CRIAÇÃO ou já tiver tecnologias no draft (navegação entre abas)
           else if (projetoDraft.tecnologias.isNotEmpty) {
             _tecnologiasSelecionadas = List.from(projetoDraft.tecnologias);
           }
-          
+
           _isLoading = false;
         });
       }
@@ -177,13 +208,16 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
     }
   }
 
+  /// Opção da lista equivalente ao valor salvo. Valor fora da lista (ex.:
+  /// tipo 'AI' dos projetos antigos) entra na lista, para não sumir da tela
+  /// nem ser trocado por outro ao salvar.
   String? _encontrarOpcao(String valor, List<String> lista) {
-    try {
-      return lista.firstWhere(
-        (e) => e.toUpperCase() == valor.toUpperCase(),
-        orElse: () => lista.first
-      );
-    } catch (_) { return null; }
+    if (valor.trim().isEmpty) return null;
+    for (final opcao in lista) {
+      if (opcao.toUpperCase() == valor.toUpperCase()) return opcao;
+    }
+    lista.add(valor);
+    return valor;
   }
 
   bool validar() {
@@ -195,67 +229,69 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
       _showError('Selecione o Tipo do projeto.');
       return false;
     }
+    if (_escolheuOutro) {
+      final escrito =
+          _tipoOutroCtrl.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+      if (escrito.isEmpty) {
+        _showError('Escreva qual é o tipo do projeto.');
+        return false;
+      }
+      // Se já existe na lista (com outra caixa), usa o que já existe.
+      projetoDraft.tipo = _opcoesTipo.firstWhere(
+          (t) => t.toUpperCase() == escrito.toUpperCase() && t != tipoOutro,
+          orElse: () => escrito);
+    }
     if (_clienteSelecionado == null) {
       _showError('Selecione um Cliente.');
       return false;
     }
     // Salvamento final
     projetoDraft.nome = _nomeCtrl.text;
-    projetoDraft.metodologia = _metodologiaCtrl.text; // Garante salvar metodologia
+    projetoDraft.metodologia =
+        _metodologiaCtrl.text; // Garante salvar metodologia
     return true;
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red)
+    avisar(context, msg);
+  }
+
+  void _alternarTecnologia(dynamic tech) {
+    setState(() {
+      if (_tecnologiasSelecionadas.any((t) => t['id'] == tech['id'])) {
+        _tecnologiasSelecionadas.removeWhere((t) => t['id'] == tech['id']);
+      } else {
+        _tecnologiasSelecionadas.add(Map<String, dynamic>.from(tech));
+      }
+      projetoDraft.tecnologias = _tecnologiasSelecionadas;
+    });
+  }
+
+  Widget _campoTexto(TextEditingController ctrl, String hint,
+      {int maxLines = 1,
+      required ValueChanged<String> aoMudar,
+      required List<TextInputFormatter> formatos}) {
+    return Container(
+      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
+      child: TextFormField(
+        controller: ctrl,
+        maxLines: maxLines,
+        style: fonteIdv(),
+        inputFormatters: formatos,
+        decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration(hint),
+        onChanged: aoMudar,
+      ),
     );
   }
 
-  void _abrirSelecaoTecnologias() {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text("Selecionar Tecnologias"),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: _listaTecnologiasDB.isEmpty 
-              ? const Text("Nenhuma tecnologia cadastrada.")
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _listaTecnologiasDB.length,
-                  itemBuilder: (ctx, i) {
-                    final tech = _listaTecnologiasDB[i];
-                    final isSelected = _tecnologiasSelecionadas.any((t) => t['id'] == tech['id']);
-                    
-                    return CheckboxListTile(
-                      title: Text(tech['nome']),
-                      value: isSelected,
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            if (!_tecnologiasSelecionadas.any((t) => t['id'] == tech['id'])) {
-                              _tecnologiasSelecionadas.add(tech);
-                            }
-                          } else {
-                            _tecnologiasSelecionadas.removeWhere((t) => t['id'] == tech['id']);
-                          }
-                          projetoDraft.tecnologias = _tecnologiasSelecionadas;
-                        });
-                        (ctx as Element).markNeedsBuild();
-                      },
-                    );
-                  },
-                ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Concluir"),
-            )
-          ],
-        );
-      },
+  Widget _coluna(String label, Widget campo, {bool obrigatorio = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ComponentsConfiguracaoInicalProjeto.buildLabel(label,
+            isRequired: obrigatorio),
+        campo,
+      ],
     );
   }
 
@@ -263,195 +299,167 @@ class _ConfiguracaoContentState extends State<_ConfiguracaoContent> {
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
 
+    const espaco = SizedBox(height: 20);
+
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ... (Header visual igual)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(color: const Color(0xFFE3F2FD), borderRadius: BorderRadius.circular(8)),
-            child: Row(
-              children: const [
-                Icon(Icons.info_outline, color: Color(0xFF2962FF), size: 20),
-                SizedBox(width: 10),
-                Text("Informações Gerais", style: TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.w500)),
-              ],
-            ),
+          _coluna(
+            'Nome do projeto',
+            _campoTexto(_nomeCtrl, 'Ex: Sistema de Gestão ERP',
+                formatos: textoIdv(LimitesIdv.nome),
+                aoMudar: (val) => projetoDraft.nome = val),
+            obrigatorio: true,
           ),
-          const SizedBox(height: 24),
-
-          // 1. NOME
-          ComponentsConfiguracaoInicalProjeto.buildLabel("Nome do projeto", isRequired: true),
-          Container(
-            decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-            child: TextFormField(
-              controller: _nomeCtrl,
-              decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration("Ex: Sistema de Gestão ERP"),
-              onChanged: (val) => projetoDraft.nome = val,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // 2. TIPO E MODELO
+          espaco,
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ComponentsConfiguracaoInicalProjeto.buildLabel("Tipo", isRequired: true),
-                    Container(
-                      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          hint: const Text("Selecione", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                          value: _tipoSelecionado,
-                          isExpanded: true,
-                          items: _opcoesTipo.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _tipoSelecionado = val;
-                              projetoDraft.tipo = val;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+                child: _coluna(
+                  'Tipo',
+                  SelecaoIdv<String>(
+                    hint: 'Selecione',
+                    valor: _tipoSelecionado,
+                    itens: _opcoesTipo,
+                    rotulo: (t) => t,
+                    aoMudar: (val) => setState(() {
+                      _tipoSelecionado = val;
+                      // "Outro": o tipo é o texto escrito no campo abaixo.
+                      projetoDraft.tipo = val == tipoOutro
+                          ? (_tipoOutroCtrl.text.trim().isEmpty
+                              ? null
+                              : _tipoOutroCtrl.text.trim())
+                          : val;
+                    }),
+                  ),
+                  obrigatorio: true,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ComponentsConfiguracaoInicalProjeto.buildLabel("Modelo", isRequired: true),
-                    Container(
-                      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          hint: const Text("Selecione", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                          value: _modeloSelecionado,
-                          isExpanded: true,
-                          items: _opcoesModelo.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _modeloSelecionado = val;
-                              projetoDraft.modelo = val;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+                child: _coluna(
+                  'Modelo',
+                  SelecaoIdv<String>(
+                    hint: 'Selecione',
+                    valor: _modeloSelecionado,
+                    itens: _opcoesModelo,
+                    rotulo: (m) => m,
+                    aoMudar: (val) => setState(() {
+                      _modeloSelecionado = val;
+                      projetoDraft.modelo = val;
+                    }),
+                  ),
+                  obrigatorio: true,
                 ),
               ),
             ],
           ),
-          
-          const SizedBox(height: 16),
-
-          // 3. DESCRIÇÃO
-          ComponentsConfiguracaoInicalProjeto.buildLabel("Descrição"),
-          Container(
-            decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-            child: TextFormField(
-              controller: _descCtrl,
-              maxLines: 4,
-              decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration("Descreva o objetivo..."),
-              onChanged: (val) => projetoDraft.descricao = val,
-            ),
+          // "Outro": campo para escrever o tipo novo. Depois de salvo, ele
+          // entra na lista de tipos (criar, editar e filtrar).
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _escolheuOutro
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: _coluna(
+                      'Qual é o tipo do projeto?',
+                      _campoTexto(_tipoOutroCtrl, 'Ex: Chatbot, IoT, Jogo...',
+                          formatos: textoIdv(40),
+                          aoMudar: (val) => projetoDraft.tipo =
+                              val.trim().isEmpty ? null : val.trim()),
+                      obrigatorio: true,
+                    ),
+                  )
+                : const SizedBox(width: double.infinity),
           ),
-          const SizedBox(height: 16),
-
-          // 4. CLIENTE E METODOLOGIA
+          espaco,
+          _coluna(
+            'Descrição',
+            _campoTexto(_descCtrl, 'Descreva o objetivo do projeto...',
+                maxLines: 4,
+                formatos: textoIdv(LimitesIdv.descricao),
+                aoMudar: (val) => projetoDraft.descricao = val),
+          ),
+          espaco,
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ComponentsConfiguracaoInicalProjeto.buildLabel("Cliente", isRequired: true),
-                    Container(
-                      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<dynamic>(
-                          hint: const Text("Selecione...", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                          value: _clienteSelecionado,
-                          isExpanded: true,
-                          items: _listaClientesDB.map((c) {
-                            return DropdownMenuItem<dynamic>(
-                              value: c, 
-                              child: Text(c['razao_social'] ?? 'Sem Nome', overflow: TextOverflow.ellipsis),
-                            );
-                          }).toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _clienteSelecionado = val;
-                              projetoDraft.cliente = val;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+                child: _coluna(
+                  'Cliente',
+                  BuscaSelecaoIdv(
+                    unico: true,
+                    itens: _listaClientesDB,
+                    rotulo: (c) => '${c['razao_social'] ?? 'Sem nome'}',
+                    detalhe: (c) => c['cnpj'] as String?,
+                    hintBusca: 'Pesquisar cliente ou CNPJ',
+                    textoVazio: 'Nenhum cliente cadastrado.',
+                    textoNenhumSelecionado: 'Nenhum cliente escolhido.',
+                    marcado: (c) =>
+                        _clienteSelecionado != null &&
+                        '${c['id']}' == '${_clienteSelecionado!['id']}',
+                    aoAlternar: (c) => setState(() {
+                      final mesmo = _clienteSelecionado != null &&
+                          '${c['id']}' == '${_clienteSelecionado!['id']}';
+                      _clienteSelecionado = mesmo ? null : c;
+                      projetoDraft.cliente = _clienteSelecionado;
+                    }),
+                  ),
+                  obrigatorio: true,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ComponentsConfiguracaoInicalProjeto.buildLabel("Metodologia"),
-                    Container(
-                      decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-                      child: TextFormField(
-                        controller: _metodologiaCtrl,
-                        decoration: ComponentsConfiguracaoInicalProjeto.inputDecoration("Ex: Scrum"),
-                        onChanged: (val) => projetoDraft.metodologia = val,
-                      ),
-                    )
-                  ],
+                child: _coluna(
+                  'Metodologia',
+                  _campoTexto(_metodologiaCtrl, 'Ex: Scrum',
+                      // Só letras, números e separadores simples (ex.: Scrum/Kanban).
+                      formatos: [
+                        ...textoIdv(LimitesIdv.metodologia),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r"[A-Za-zÀ-ÿ0-9 \-/&.+]")),
+                      ],
+                      aoMudar: (val) => projetoDraft.metodologia = val),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // 5. TECNOLOGIAS (Multi-Select)
-          ComponentsConfiguracaoInicalProjeto.buildLabel("Tecnologias Utilizadas", isRequired: true),
-          GestureDetector(
-            onTap: _abrirSelecaoTecnologias,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 50),
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: ComponentsConfiguracaoInicalProjeto.inputBoxDecoration,
-              child: _tecnologiasSelecionadas.isEmpty
-                  ? const Text("Toque para selecionar...", style: TextStyle(color: Colors.grey, fontSize: 13))
-                  : Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: _tecnologiasSelecionadas.map((t) => Chip(
-                        label: Text(t['nome'], style: const TextStyle(fontSize: 11)),
-                        backgroundColor: Colors.blue[50],
-                        deleteIcon: const Icon(Icons.close, size: 12, color: Colors.blue),
-                        onDeleted: () {
-                           setState(() {
-                             _tecnologiasSelecionadas.removeWhere((item) => item['id'] == t['id']);
-                             projetoDraft.tecnologias = _tecnologiasSelecionadas;
-                           });
-                        },
-                      )).toList(),
-                    ),
-            ),
+          espaco,
+          Row(
+            children: [
+              Expanded(
+                child: ComponentsConfiguracaoInicalProjeto.buildLabel(
+                    'Tecnologias utilizadas',
+                    isRequired: true),
+              ),
+              if (_tecnologiasSelecionadas.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    '${_tecnologiasSelecionadas.length} selecionada${_tecnologiasSelecionadas.length == 1 ? '' : 's'}',
+                    style: fonteIdv(tamanho: 13, cor: CoresIdv.textoSecundario),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 24),
+          BuscaSelecaoIdv(
+            itens: _listaTecnologiasDB,
+            rotulo: (t) => '${t['nome'] ?? ''}',
+            grupo: (t) => t['categoria'] as String?,
+            listarSemBusca: true,
+            hintBusca: 'Pesquisar tecnologia ou categoria',
+            textoVazio: 'Nenhuma tecnologia cadastrada.',
+            textoNenhumSelecionado: 'Nenhuma tecnologia escolhida ainda.',
+            marcado: (tech) =>
+                _tecnologiasSelecionadas.any((t) => t['id'] == tech['id']),
+            aoAlternar: _alternarTecnologia,
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );

@@ -1,10 +1,11 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/screens/Login/Components/auth_components.dart';
 import 'package:fabrica_software_app/screens/Login/Styles/style_login.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
-import '../Gerenciar_Projetos/Gerenciar_projetos.dart';
 
 class Loginscreen extends StatefulWidget {
   const Loginscreen({super.key});
@@ -33,10 +34,8 @@ class _LoginscreenState extends State<Loginscreen> {
       if (!mounted) return;
 
       if (success) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const GerenciarProjetos()),
-        );
+        Navigator.pushNamedAndRemoveUntil(
+            context, '/Gerenciar_Projetos', (_) => false);
       } else {
         _mostrarErro(auth.error ?? mensagemFalha);
       }
@@ -63,8 +62,7 @@ class _LoginscreenState extends State<Loginscreen> {
 
   void _mostrarErro(String mensagem) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(mensagem)));
+    avisar(context, mensagem, tipo: TipoAviso.info);
   }
 
   // ---------------- UI ----------------
@@ -76,11 +74,11 @@ class _LoginscreenState extends State<Loginscreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const LogoTegra(),
-            const SizedBox(height: 4),
-            Text('Entre em sua conta',
-                textAlign: TextAlign.center, style: StyleLogin.titulo),
-            const SizedBox(height: 62),
+            const CabecalhoAuth(
+              titulo: 'Entre em sua conta',
+              descricao: 'Use o e-mail e a senha cadastrados para acessar '
+                  'o painel.',
+            ),
             CampoVidro(
               controller: _emailController,
               hint: 'Email',
@@ -89,7 +87,7 @@ class _LoginscreenState extends State<Loginscreen> {
               acao: TextInputAction.next,
               autofill: const [AutofillHints.email],
             ),
-            const SizedBox(height: 39),
+            const SizedBox(height: CabecalhoAuth.espacoCampos),
             CampoVidro(
               controller: _senhaController,
               hint: 'Senha',
@@ -107,17 +105,17 @@ class _LoginscreenState extends State<Loginscreen> {
                 alignment: Alignment.centerRight,
                 child: LinkSublinhado(
                   texto: 'Esqueci a senha',
-                  onTap: () => Navigator.pushNamed(context, '/Account'),
+                  onTap: () => Navigator.pushNamed(context, RotasApp.recuperarSenha),
                 ),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 18),
             BotaoLaranja(
               texto: 'Entrar',
               carregando: _isLoading,
               onPressed: _isLoading ? null : _entrarComEmail,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             Wrap(
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
@@ -129,9 +127,9 @@ class _LoginscreenState extends State<Loginscreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             const DivisorOu(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             BotaoGoogle(onPressed: _isLoading ? null : _entrarComGoogle),
           ],
         ),

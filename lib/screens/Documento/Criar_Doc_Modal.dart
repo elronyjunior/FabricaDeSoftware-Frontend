@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -56,9 +57,7 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
 
   Future<void> _gerar() async {
     if (_tipoSelecionado == null || _tituloController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Selecione um tipo e preencha o título"), backgroundColor: Colors.orange)
-      );
+      avisar(context, "Selecione um tipo e preencha o título", tipo: TipoAviso.info);
       return;
     }
 
@@ -101,16 +100,12 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
       if (mounted) {
         Navigator.pop(context); // Fecha o modal
         widget.onSuccess(); // Atualiza a tela de trás
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Documento criado com sucesso!"), backgroundColor: Colors.green)
-        );
+        avisar(context, "Documento criado com sucesso!", tipo: TipoAviso.sucesso);
       }
     } catch (e) {
       _progressoTimer?.cancel();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erro: $e"), backgroundColor: Colors.red)
-        );
+        avisar(context, "Erro: $e", tipo: TipoAviso.erro);
       }
     } finally {
       _progressoTimer?.cancel();

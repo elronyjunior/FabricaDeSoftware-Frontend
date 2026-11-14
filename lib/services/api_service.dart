@@ -188,22 +188,25 @@ class ApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/ai/estimar-orcamento');
     final headers = await _getHeaders();
     
+    final http.Response response;
     try {
-      final response = await http.post(
+      response = await http.post(
         uri,
         headers: headers,
         body: jsonEncode(dadosProjeto),
       );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Erro na IA de Orçamento (${response.statusCode})');
-      }
     } catch (e) {
       print("Erro IA Orçamento: $e");
-      throw Exception('Falha ao conectar com serviço de Orçamento');
+      throw Exception('Falha ao conectar com serviço de Orçamento: $e');
     }
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    // Repassa a resposta do servidor (ex.: limite de uso da IA) para a tela
+    // poder explicar o motivo.
+    throw Exception(
+        'Erro na IA de Orçamento (${response.statusCode}): ${response.body}');
   }
 
   // ===========================================================================
@@ -222,8 +225,8 @@ class ApiService {
       "nome_projeto": dtoData['nome_projeto'],
       "descricao": dtoData['descricao'],
       "modelo_projeto": dtoData['modelo_projeto'],
-      // aceita 'tipo_projeto' ou 'tipo'
-      "tipo_projeto": dtoData['tipo_projeto'] ?? dtoData['tipo'],
+      // O back-end grava o campo "tipo" (aceita 'tipo_projeto' do caller).
+      "tipo": dtoData['tipo_projeto'] ?? dtoData['tipo'],
       "escopo": dtoData['escopo'],                 
       "complexidade": dtoData['complexidade'],     
       "cliente_id": dtoData['cliente_id'],
@@ -367,6 +370,10 @@ class ApiService {
   static Future<List<dynamic>> getClientes() async => _get(ApiConfig.clientes);
   static Future<List<dynamic>> getTecnologias() async => _get(ApiConfig.tecnologias);
   static Future<List<dynamic>> getContribuidores() async => _get(ApiConfig.contribuidores);
+
+  /// Vínculos pessoa-projeto (com o nome da pessoa), para o filtro de membros.
+  static Future<List<dynamic>> getContribuidoresProjetos() async =>
+      _get(ApiConfig.contribuidoresProjeto);
   static Future<List<dynamic>> getRecursos() async => _get(ApiConfig.recursos);
 
   // Novo método para buscar os IDs das tecnologias do projeto
@@ -380,12 +387,53 @@ class ApiService {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         // Retorna apenas uma lista de IDs (ex: [1, 5, 9])
-        return data.map<int>((item) => item['tecnologia_id'] as int).toList();
+        // O Postgres devolve bigint como texto ("2"): converte com segurança.
+        return data
+            .map((item) => int.tryParse('${item['tecnologia_id']}'))
+            .whereType<int>()
+            .toList();
       }
       return [];
     } catch (e) {
       print("Erro ao buscar tecnologias do projeto: $e");
       return [];
+    }
+  }
+
+  /// Deixa as tecnologias do projeto iguais a [desejadas]: adiciona as que
+  /// faltam e remove as que saíram (o PUT de projetos não mexe nelas).
+  static Future<void> sincronizarTecnologiasDoProjeto(
+      int projetoId, Set<int> desejadas,
+      {required int aprovadoPorId}) async {
+    final atuais = (await getTecnologiasDoProjeto(projetoId)).toSet();
+    final headers = await _getHeaders();
+    final base = '${ApiConfig.baseUrl}${ApiConfig.tecnologiasProjeto}';
+
+    for (final id in desejadas.difference(atuais)) {
+      final resposta = await http.post(
+        Uri.parse(base),
+        headers: headers,
+        body: jsonEncode({
+          'projeto_id': projetoId,
+          'tecnologia_id': id,
+          'aprovado_por_id': aprovadoPorId,
+          'data_aprovacao': DateTime.now().toIso8601String(),
+        }),
+      );
+      if (resposta.statusCode >= 300) {
+        throw Exception(
+            'Erro ao adicionar tecnologia (${resposta.statusCode}): ${resposta.body}');
+      }
+    }
+
+    for (final id in atuais.difference(desejadas)) {
+      final resposta = await http.delete(Uri.parse('$base/$projetoId/$id'),
+          headers: headers);
+      // 404 = já não estava no projeto.
+      if (resposta.statusCode >= 300 && resposta.statusCode != 404) {
+        throw Exception(
+            'Erro ao remover tecnologia (${resposta.statusCode}): ${resposta.body}');
+      }
     }
   }
 }

@@ -1,3 +1,5 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/screens/Documento/Criar_Doc_Modal.dart';
 import 'package:fabrica_software_app/screens/Documento/Visualizar_Documento_Screen.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +51,7 @@ class _DocumentosProjetoScreenState extends State<DocumentosProjetoScreen> {
         throw 'Não foi possível abrir';
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro ao abrir link")));
+      avisar(context, "Erro ao abrir link", tipo: TipoAviso.erro);
     }
   }
 
@@ -77,7 +79,7 @@ class _DocumentosProjetoScreenState extends State<DocumentosProjetoScreen> {
 
   // Lógica para Deletar (Banco + Drive)
   Future<void> _deletarDocumento(int id) async {
-    final confirmar = await showDialog<bool>(
+    final confirmar = await mostrarDialogo<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -101,14 +103,14 @@ class _DocumentosProjetoScreenState extends State<DocumentosProjetoScreen> {
       final response = await http.delete(url, headers: ApiConfig.getAuthHeaders(token));
 
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Documento apagado!"), backgroundColor: Colors.green));
+        avisar(context, "Documento apagado!", tipo: TipoAviso.sucesso);
         _carregarDocumentos(); // Recarrega a lista
       } else {
         throw Exception("Erro ao deletar");
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro ao excluir documento"), backgroundColor: Colors.red));
+      avisar(context, "Erro ao excluir documento", tipo: TipoAviso.erro);
     }
   }
 
@@ -142,7 +144,7 @@ class _DocumentosProjetoScreenState extends State<DocumentosProjetoScreen> {
               alignment: Alignment.centerLeft, 
               child: ElevatedButton.icon(
                 onPressed: () {
-                  showDialog(
+                  mostrarDialogo(
                     context: context,
                     builder: (_) => ModalCriarDocIA(
                       projetoId: widget.projeto.id!,

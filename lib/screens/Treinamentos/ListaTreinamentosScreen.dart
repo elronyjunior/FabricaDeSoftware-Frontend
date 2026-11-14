@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/screens/Treinamentos/ControlePresencaScreen.dart';
 import 'package:fabrica_software_app/screens/Treinamentos/ModalCriarTreinamento.dart';
 import 'package:flutter/material.dart';
@@ -36,7 +37,7 @@ class ListaTreinamentosScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 24),
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      showDialog(
+                      mostrarDialogo(
                         context: context,
                         builder: (ctx) => ModalCriarTreinamento(
                           projetoId: projeto.id!,
@@ -161,7 +162,7 @@ class ListaTreinamentosScreen extends StatelessWidget {
                 icon: const Icon(Icons.more_horiz, color: Colors.grey),
                 onSelected: (value) {
                   if (value == 'edit') {
-                     showDialog(context: context, builder: (_) => ModalCriarTreinamento(projetoId: projeto.id!, treinamentoEdicao: t, onSuccess: () => provider.carregarTreinamentos(projeto.id!)));
+                     mostrarDialogo(context: context, builder: (_) => ModalCriarTreinamento(projetoId: projeto.id!, treinamentoEdicao: t, onSuccess: () => provider.carregarTreinamentos(projeto.id!)));
                   } else if (value == 'delete') {
                     provider.deletarTreinamento(int.parse(t['id'].toString()));
                   }

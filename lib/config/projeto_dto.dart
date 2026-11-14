@@ -20,6 +20,7 @@ class ProjetoDTO {
 
   DateTime? dataInicio;
   DateTime? dataFinalPrevista;
+  DateTime? dataFinal; // conclusão real (mantida ao editar)
   double? orcamentoEstimado;
   String? complexidade;
 
@@ -41,6 +42,7 @@ class ProjetoDTO {
     metodologia = null;
     cliente = null;
     responsavel = null; // <--- Limpar
+    dataFinal = null;
     escopo = null;
     tecnologias = [];
     equipe = [];
@@ -60,12 +62,13 @@ class ProjetoDTO {
     id = p.id;
     nome = p.nomeProjeto;
     descricao = p.descricao;
-    tipo = _normalizarOpcao(p.tipo, ['Web', 'Mobile', 'Desktop', 'API', 'Híbrido', 'Outro']);
+    tipo = _normalizarOpcao(p.tipo, [...tiposProjeto, tipoOutro]);
     modelo = _normalizarOpcao(p.modeloProjeto, ['SaaS', 'Marketplace', 'E-commerce', 'B2B', 'Institucional', 'Interno', 'Outros']);
     metodologia = p.metodologia;
     escopo = p.escopo;
     dataInicio = p.dataInicio;
     dataFinalPrevista = p.dataFinalPrevisto;
+    dataFinal = p.dataFinal;
     orcamentoEstimado = p.orcamentoEstimado;
     complexidade = p.complexidade?.name; 
 
@@ -88,6 +91,33 @@ class ProjetoDTO {
     }
   }
 
+  /// Corpo enviado a `ApiService.criarProjetoCompleto` ao concluir a criação.
+  /// Usado pelo wizard clássico e pelo formulário conversacional.
+  Map<String, dynamic> montarPayloadCriacao(int usuarioLogadoId) => {
+        "nome_projeto": nome,
+        "descricao": descricao,
+        "modelo_projeto": modelo,
+        "tipo": tipo,
+        "escopo": escopo,
+        "complexidade": complexidade,
+        "cliente_id": cliente?['id'],
+        "metodologia": metodologia,
+        "data_inicio": dataInicio?.toIso8601String(),
+        "data_final_previsto": dataFinalPrevista?.toIso8601String(),
+        "orcamento_estimado": orcamentoEstimado,
+        "criado_por_id": usuarioLogadoId,
+        "responsavel_id":
+            responsavel != null ? responsavel!['id'] : usuarioLogadoId,
+        "tecnologias": tecnologias.map((t) => t['id']).toList(),
+        "equipe": equipe,
+        "recursos": recursos.map((r) => r['id']).toList(),
+        "requisitos": requisitos.toList(),
+        "diagrama_caso_uso_titulo": diagramaCasoUsoTitulo,
+        "diagrama_caso_uso_mermaid": diagramaCasoUsoMermaid,
+        "diagrama_caso_uso_imagem_base64": diagramaCasoUsoImagemBase64,
+        "diagrama_caso_uso_atores": diagramaCasoUsoAtores,
+      };
+
   String? _normalizarOpcao(String? valorBanco, List<String> opcoesDropdown) {
     if (valorBanco == null) return null;
     try {
@@ -95,9 +125,23 @@ class ProjetoDTO {
         (opcao) => opcao.toUpperCase() == valorBanco.toUpperCase()
       );
     } catch (e) {
-      return null; 
+      // Fora da lista (ex.: 'AI'): mantém o valor para a tela mostrar.
+      return valorBanco;
     }
   }
 }
 
 final projetoDraft = ProjetoDTO();
+
+/// Tipos padrão de projeto. A lista completa (criar, editar e filtrar) junta
+/// estes com os tipos personalizados já salvos nos projetos e termina em
+/// [tipoOutro] (ver ProjetosProvider.tiposDisponiveis).
+const tiposProjeto = ['Web', 'Mobile', 'Desktop', 'API', 'Híbrido'];
+
+/// Opção que abre o campo para escrever um tipo novo.
+const tipoOutro = 'Outro';
+
+/// "outro"/"outros" (inclusive o padrão 'OUTROS' do banco) não viram tipo
+/// personalizado: são a própria opção [tipoOutro].
+bool ehTipoOutro(String tipo) =>
+    const {'OUTRO', 'OUTROS'}.contains(tipo.trim().toUpperCase());

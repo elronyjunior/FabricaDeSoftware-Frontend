@@ -7,7 +7,9 @@ class Cliente {
   final String? setor;
   final String? contato;
   final DateTime? dataCriacao;
-  final int enderecoId;
+  // Opcional: o banco permite cliente sem endereço (o modal de cliente
+  // mostra "Adicionar Endereço" nesse caso).
+  final int? enderecoId;
 
   Cliente({
     this.id,
@@ -18,7 +20,7 @@ class Cliente {
     this.setor,
     this.contato,
     this.dataCriacao,
-    required this.enderecoId,
+    this.enderecoId,
   });
 
   factory Cliente.fromJson(Map<String, dynamic> json) {
@@ -41,9 +43,11 @@ class Cliente {
           ? DateTime.parse(json['data_criacao']) 
           : null,
       
-      // --- CORRIGIDO ---
-      // (Assumindo que 'endereco_id' NUNCA será nulo)
-      enderecoId: int.parse(json['endereco_id'].toString()),
+      // Cliente sem endereço vem com endereco_id nulo: antes isso quebrava a
+      // leitura da lista inteira (FormatException).
+      enderecoId: json['endereco_id'] == null
+          ? null
+          : int.tryParse(json['endereco_id'].toString()),
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/models/teste.dart';
 import 'package:fabrica_software_app/providers/testes_provider.dart';
 // Note que aqui estou importando o arquivo com letra Maiúscula conforme sua imagem
@@ -47,7 +48,7 @@ class _TestesContent extends StatelessWidget {
 
   // Função para abrir o Modal Centralizado
   void _abrirModal(BuildContext context, TestesProvider provider, {Teste? teste}) {
-    showDialog(
+    mostrarDialogo(
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: Colors.white,
@@ -199,7 +200,7 @@ class _TestesContent extends StatelessWidget {
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                                     onPressed: () {
-                                      showDialog(
+                                      mostrarDialogo(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
                                           backgroundColor: Colors.white,

@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/models/teste.dart';
 import 'package:flutter/material.dart';
 
@@ -74,12 +75,7 @@ class _TesteModalState extends State<TesteModal> {
         // SE DEU ERRO: Para o loading e mostra mensagem
         if (mounted) {
           setState(() => _isSaving = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erro ao salvar: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          avisar(context, 'Erro ao salvar: $e', tipo: TipoAviso.erro);
         }
       }
     }

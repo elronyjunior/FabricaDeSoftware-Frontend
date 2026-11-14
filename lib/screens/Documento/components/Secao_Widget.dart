@@ -1,3 +1,5 @@
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fabrica_software_app/models/documento_conteudo.dart';
@@ -333,7 +335,7 @@ class _SecaoWidgetState extends State<SecaoWidget> {
   }
 
   Future<void> _confirmarRemocao(BuildContext context, DocumentoEditorProvider provider) async {
-    final confirmar = await showDialog<bool>(
+    final confirmar = await mostrarDialogo<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
@@ -374,12 +376,7 @@ class _SecaoWidgetState extends State<SecaoWidget> {
                 : (_) {
                     final aceita = provider.alternarSelecaoParaRetrabalho(widget.secao.localId);
                     if (!aceita) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Não dá pra selecionar uma seção junto com sua seção pai ou subseção.'),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
+                      avisar(context, 'Não dá pra selecionar uma seção junto com sua seção pai ou subseção.', tipo: TipoAviso.info);
                     }
                   },
             visualDensity: VisualDensity.compact,

@@ -9,18 +9,27 @@ class StyleLogin {
   static const Color fundo = Color(0xFF07072E);
   static const Color laranja = Color(0xFFFF5F00);
   static const Color laranjaClaro = Color(0xFFFF8A1F);
-  static const Color bordaCampo = Color(0xFF9AA6F5);
+  /// Linha dos campos (contorno e separador do ícone): branco suave, como
+  /// na referência (antes era azulada).
+  static const Color bordaCampo = Color(0x8CFFFFFF);
+
+  /// Preenchimento dos campos: um tom só, sem escurecer no hover ou no foco.
+  static const Color fundoCampo = Color(0x1FFFFFFF);
   static const Color iconeCampo = Color(0xFF8D8DA3);
   static const Color linhaDivisor = Color(0xFF8E9BEF);
   static const Color texto = Colors.white;
   static const Color textoSecundario = Color(0xFFE4E4F0);
 
   // ---------------- Medidas ----------------
-  static const double cardLargura = 445;
-  static const double cardRaio = 44;
-  static const EdgeInsets cardPadding = EdgeInsets.fromLTRB(49, 40, 49, 50);
+  /// Card quase quadrado (como o de Recuperar senha), igual nas três telas.
+  static const double cardLargura = 560;
 
-  static const double campoLargura = 330;
+  /// Altura fixa do card (cabe o cadastro, a tela com mais campos).
+  static const double cardAltura = 600;
+  static const double cardRaio = 44;
+  static const EdgeInsets cardPadding = EdgeInsets.fromLTRB(48, 28, 48, 28);
+
+  static const double campoLargura = 410;
   static const double campoAltura = 55;
   static const double raio = 10;
 
