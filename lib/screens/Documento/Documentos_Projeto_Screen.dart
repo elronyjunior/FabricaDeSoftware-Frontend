@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/screens/Documento/Criar_Doc_Modal.dart';
@@ -81,14 +82,12 @@ class _DocumentosProjetoScreenState extends State<DocumentosProjetoScreen> {
   Future<void> _deletarDocumento(int id) async {
     final confirmar = await mostrarDialogo<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text("Excluir Documento"),
-        content: const Text("Isso apagará o registro e o arquivo no Google Drive. Tem certeza?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Excluir", style: TextStyle(color: Colors.red))),
-        ],
+      builder: (ctx) => ConfirmacaoIdv(
+        titulo: 'Excluir documento',
+        mensagem: 'O registro e o arquivo no Google Drive serão apagados. '
+            'Essa ação não pode ser desfeita.',
+        rotuloAcao: 'Excluir documento',
+        aoConfirmar: () => Navigator.pop(ctx, true),
       ),
     );
 

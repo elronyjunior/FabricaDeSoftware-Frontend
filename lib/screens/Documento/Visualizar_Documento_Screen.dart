@@ -1,3 +1,5 @@
+import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'dart:convert';
@@ -284,22 +286,8 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
   Future<bool> _confirmarSaidaComAlteracoesPendentes(BuildContext context) async {
     final resultado = await mostrarDialogo<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text('Alterações não salvas'),
-        content: const Text('Deseja salvar suas alterações antes de sair?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, 'cancelar'), child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'descartar'),
-            child: const Text('Descartar', style: TextStyle(color: Colors.red)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, 'salvar'),
-            style: ElevatedButton.styleFrom(backgroundColor: _corPrimaria, foregroundColor: Colors.white),
-            child: const Text('Salvar'),
-          ),
-        ],
+      builder: (ctx) => _DialogoAlteracoesPendentes(
+        aoEscolher: (escolha) => Navigator.pop(ctx, escolha),
       ),
     );
 
@@ -505,25 +493,20 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
 
     final instrucao = await mostrarDialogo<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text('Retrabalhar $quantidade seção(ões) com IA'),
-        content: TextField(
-          controller: controlador,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'O que a IA deve mudar nessa(s) seção(ões)? (opcional)',
-          ),
+      builder: (ctx) => PainelIdv(
+        titulo: quantidade == 1
+            ? 'Retrabalhar 1 seção com IA'
+            : 'Retrabalhar $quantidade seções com IA',
+        ajuda: 'A IA reescreve as seções selecionadas. Você revisa as '
+            'mudanças antes de salvar.',
+        rotuloAcao: 'Enviar para a IA',
+        aoConfirmar: () => Navigator.pop(ctx, controlador.text),
+        child: CampoIdv(
+          rotulo: 'Instruções para a IA',
+          controle: controlador,
+          linhas: 4,
+          dica: 'Opcional: o que a IA deve mudar nessa(s) seção(ões)?',
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, controlador.text),
-            style: ElevatedButton.styleFrom(backgroundColor: _corPrimaria, foregroundColor: Colors.white),
-            child: const Text('Enviar para IA'),
-          ),
-        ],
       ),
     );
 
@@ -755,5 +738,74 @@ class _VisualizarDocumentoBodyState extends State<_VisualizarDocumentoBody> {
         ),
       );
     }).toList();
+  }
+}
+
+/// Sair com alterações não salvas: salvar, descartar ou continuar editando.
+/// Devolve 'salvar', 'descartar' ou 'cancelar'.
+class _DialogoAlteracoesPendentes extends StatelessWidget {
+  const _DialogoAlteracoesPendentes({required this.aoEscolher});
+  final ValueChanged<String> aoEscolher;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(StyleProjetos.sidebarAbertaRaio)),
+      child: Theme(
+        data: temaIdv(Theme.of(context)),
+        child: SizedBox(
+          width: 500,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 28, 28, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: const BoxDecoration(
+                    color: CoresIdv.laranjaSuave,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.save_outlined,
+                      size: 21, color: CoresIdv.laranja),
+                ),
+                const SizedBox(height: 16),
+                Text('Alterações não salvas',
+                    style: fonteIdv(tamanho: 20, peso: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Text('Deseja salvar suas alterações antes de sair?',
+                    style:
+                        fonteIdv(cor: CoresIdv.textoSecundario, altura: 1.45)),
+                const SizedBox(height: 26),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    BotaoSecundarioIdv(
+                      rotulo: 'Continuar editando',
+                      aoTocar: () => aoEscolher('cancelar'),
+                    ),
+                    BotaoSecundarioIdv(
+                      rotulo: 'Descartar',
+                      aoTocar: () => aoEscolher('descartar'),
+                    ),
+                    BotaoPrincipalIdv(
+                      rotulo: 'Salvar e sair',
+                      aoTocar: () => aoEscolher('salvar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

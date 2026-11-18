@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/models/teste.dart';
 import 'package:fabrica_software_app/providers/testes_provider.dart';
@@ -50,24 +51,17 @@ class _TestesContent extends StatelessWidget {
   void _abrirModal(BuildContext context, TestesProvider provider, {Teste? teste}) {
     mostrarDialogo(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 500), // Evita ficar gigante
-          child: TesteModal(
-            projetoId: projetoId, // Usa o ID recebido
-            testeExistente: teste,
-            onSave: (t) async {
-              if (t.id == null) {
-                await provider.adicionarTeste(t);
-              } else {
-                await provider.atualizarTeste(t);
-              }
-            },
-          ),
-        ),
+      barrierDismissible: false,
+      builder: (ctx) => TesteModal(
+        projetoId: projetoId, // Usa o ID recebido
+        testeExistente: teste,
+        onSave: (t) async {
+          if (t.id == null) {
+            await provider.adicionarTeste(t);
+          } else {
+            await provider.atualizarTeste(t);
+          }
+        },
       ),
     );
   }
@@ -202,23 +196,15 @@ class _TestesContent extends StatelessWidget {
                                     onPressed: () {
                                       mostrarDialogo(
                                         context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          backgroundColor: Colors.white,
-                                          title: const Text('Excluir'),
-                                          content: const Text('Confirmar exclusão?'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(ctx),
-                                              child: const Text('Cancelar'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.pop(ctx);
-                                                provider.excluirTeste(teste.id!);
-                                              },
-                                              child: const Text('Excluir', style: TextStyle(color: Colors.red)),
-                                            ),
-                                          ],
+                                        builder: (ctx) => ConfirmacaoIdv(
+                                          titulo: 'Excluir teste',
+                                          mensagem: '${teste.nome} será excluído. '
+                                              'Essa ação não pode ser desfeita.',
+                                          rotuloAcao: 'Excluir teste',
+                                          aoConfirmar: () {
+                                            Navigator.pop(ctx);
+                                            provider.excluirTeste(teste.id!);
+                                          },
                                         ),
                                       );
                                     },

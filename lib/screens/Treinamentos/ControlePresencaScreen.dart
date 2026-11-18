@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -328,28 +329,23 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
 
   Future<void> _showNovoAlunoDialog(BuildContext context, dynamic provider) async {
     final nomeCtrl = TextEditingController(); final emailCtrl = TextEditingController();
-    mostrarDialogo(context: context, builder: (_) => AlertDialog(
-      title: const Text("Novo Aluno"),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: nomeCtrl, decoration: const InputDecoration(labelText: "Nome", border: OutlineInputBorder())),
-        const SizedBox(height: 12),
-        TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: "Email", border: OutlineInputBorder())),
+    mostrarDialogo(context: context, builder: (ctx) => PainelIdv(
+      titulo: 'Novo aluno',
+      rotuloAcao: 'Adicionar aluno',
+      aoConfirmar: () { Navigator.pop(ctx); provider.adicionarAluno(widget.treinamentoId, nomeCtrl.text, emailCtrl.text); },
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        CampoIdv(rotulo: 'Nome', controle: nomeCtrl, dica: 'Nome completo do aluno'),
+        CampoIdv(rotulo: 'E-mail', controle: emailCtrl, dica: 'aluno@empresa.com', teclado: TextInputType.emailAddress),
       ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-        ElevatedButton(onPressed: () { Navigator.pop(context); provider.adicionarAluno(widget.treinamentoId, nomeCtrl.text, emailCtrl.text); }, child: const Text("Adicionar"))
-      ],
     ));
   }
 
   void _confirmarExclusaoDia(BuildContext context, dynamic provider, int index) {
-    mostrarDialogo(context: context, builder: (ctx) => AlertDialog(
-      title: const Text("Remover Dia"),
-      content: const Text("Tem certeza?"),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
-        TextButton(onPressed: () { Navigator.pop(ctx); provider.removerDia(widget.treinamentoId, index); }, child: const Text("Excluir", style: TextStyle(color: Colors.red))),
-      ],
+    mostrarDialogo(context: context, builder: (ctx) => ConfirmacaoIdv(
+      titulo: 'Remover dia',
+      mensagem: 'O dia e as presenças marcadas nele serão removidos. Essa ação não pode ser desfeita.',
+      rotuloAcao: 'Remover dia',
+      aoConfirmar: () { Navigator.pop(ctx); provider.removerDia(widget.treinamentoId, index); },
     ));
   }
 }

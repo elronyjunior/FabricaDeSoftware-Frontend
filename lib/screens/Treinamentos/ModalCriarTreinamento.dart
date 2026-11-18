@@ -1,6 +1,8 @@
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:fabrica_software_app/config/api_config.dart';
@@ -115,7 +117,8 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
         if (mounted) {
           Navigator.pop(context);
           widget.onSuccess();
-          avisar(context, isEdicao ? "Treinamento atualizado!" : "Treinamento criado!", tipo: TipoAviso.sucesso);
+          // O painel já fechou: o aviso aparece na tela de trás.
+          avisarApp(isEdicao ? "Treinamento atualizado!" : "Treinamento criado!", tipo: TipoAviso.sucesso);
         }
       } else {
         throw Exception("Erro no backend: ${response.body}");
@@ -155,127 +158,107 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
   Widget build(BuildContext context) {
     final isEdicao = widget.treinamentoEdicao != null;
 
-    return Dialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 600,
-        padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(isEdicao ? "Editar Treinamento" : "Novo Treinamento", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.grey))
-                  ],
-                ),
-                const Divider(height: 30),
-
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField("Nome do Treinamento", _nomeCtrl, icon: Icons.title)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildDropdown()),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField("Instrutor", _instrutorCtrl, icon: Icons.person)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildTextField("Carga Horária (h)", _cargaHorariaCtrl, icon: Icons.timer, isNumber: true)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Expanded(child: _buildDatePicker("Data Início", _dataInicioCtrl, () => _selecionarData(true))),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildDatePicker("Data Término", _dataTerminoCtrl, () => _selecionarData(false))),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildTextField("Descrição", _descricaoCtrl, maxLines: 3),
-
-                const SizedBox(height: 32),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _salvar,
-                      icon: _isLoading 
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                        : Icon(isEdicao ? Icons.save : Icons.check, size: 18),
-                      label: Text(_isLoading ? "Salvando..." : (isEdicao ? "Salvar Alterações" : "Criar Treinamento")),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ],
-                )
-              ],
+    return PainelIdv(
+      titulo: isEdicao ? 'Editar treinamento' : 'Novo treinamento',
+      rotuloAcao: isEdicao ? 'Salvar alterações' : 'Criar treinamento',
+      carregando: _isLoading,
+      aoConfirmar: _salvar,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SecaoIdv('Informações gerais'),
+            CampoIdv(
+              rotulo: 'Nome do treinamento',
+              controle: _nomeCtrl,
+              obrigatorio: true,
+              dica: 'Ex.: Boas práticas com Flutter',
             ),
-          ),
+            LinhaCamposIdv(children: [
+              _buildDropdown(),
+              CampoIdv(
+                rotulo: 'Instrutor',
+                controle: _instrutorCtrl,
+                obrigatorio: true,
+                dica: 'Quem vai conduzir',
+              ),
+            ]),
+            CampoIdv(
+              rotulo: 'Descrição',
+              controle: _descricaoCtrl,
+              obrigatorio: true,
+              linhas: 3,
+              dica: 'O que será abordado no treinamento',
+            ),
+            const SizedBox(height: 6),
+            const SecaoIdv('Período e carga horária'),
+            LinhaCamposIdv(children: [
+              _buildDatePicker('Data de início', _dataInicioCtrl,
+                  () => _selecionarData(true)),
+              _buildDatePicker('Data de término', _dataTerminoCtrl,
+                  () => _selecionarData(false)),
+            ]),
+            CampoIdv(
+              rotulo: 'Carga horária (h)',
+              controle: _cargaHorariaCtrl,
+              obrigatorio: true,
+              dica: 'Ex.: 8',
+              teclado: TextInputType.number,
+              formatadores: [FilteringTextInputFormatter.digitsOnly],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController ctrl, {IconData? icon, bool isNumber = false, int maxLines = 1}) {
-    return TextFormField(
-      controller: ctrl,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      maxLines: maxLines,
-      validator: (v) => v == null || v.isEmpty ? "Obrigatório" : null,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: icon != null ? Icon(icon, size: 20, color: Colors.grey) : null,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      ),
-    );
-  }
-
-  Widget _buildDatePicker(String label, TextEditingController ctrl, VoidCallback onTap) {
-    return TextFormField(
-      controller: ctrl,
-      readOnly: true,
-      onTap: onTap,
-      validator: (v) => v == null || v.isEmpty ? "Obrigatório" : null,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+  /// Data no visual dos campos; o calendário abre ao tocar.
+  Widget _buildDatePicker(
+      String label, TextEditingController ctrl, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          RotuloIdv(label, obrigatorio: true),
+          TextFormField(
+            controller: ctrl,
+            readOnly: true,
+            onTap: onTap,
+            style: fonteIdv(),
+            mouseCursor: SystemMouseCursors.click,
+            validator: (v) => v == null || v.isEmpty
+                ? 'Escolha a ${label.toLowerCase()}'
+                : null,
+            decoration: decoracaoCampoIdv(
+              dica: 'dd/mm/aaaa',
+              sufixo: const Icon(Icons.calendar_today_rounded,
+                  size: 18, color: CoresIdv.textoSecundario),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _tipoSelecionado,
-      items: _tipos.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-      onChanged: (v) => setState(() => _tipoSelecionado = v!),
-      decoration: InputDecoration(
-        labelText: "Tipo",
-        prefixIcon: const Icon(Icons.category, size: 20, color: Colors.grey),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const RotuloIdv('Tipo', obrigatorio: true),
+          SelecaoIdv<String>(
+            hint: 'Escolha o tipo',
+            valor: _tipoSelecionado,
+            itens: _tipos,
+            rotulo: (t) => t,
+            aoMudar: (v) {
+              if (v != null) setState(() => _tipoSelecionado = v);
+            },
+          ),
+        ],
       ),
     );
   }

@@ -1,10 +1,8 @@
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/services/documento_service.dart';
-
-const _corPrimaria = Color(0xFF8B5CF6);
 
 class ModalCriarDocIA extends StatefulWidget {
   final int projetoId;
@@ -100,7 +98,7 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
       if (mounted) {
         Navigator.pop(context); // Fecha o modal
         widget.onSuccess(); // Atualiza a tela de trás
-        avisar(context, "Documento criado com sucesso!", tipo: TipoAviso.sucesso);
+        avisarApp("Documento criado com sucesso!", tipo: TipoAviso.sucesso);
       }
     } catch (e) {
       _progressoTimer?.cancel();
@@ -175,285 +173,157 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 640),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildCabecalho(),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                child: AnimatedOpacity(
-                  opacity: _isLoading ? 0.45 : 1,
-                  duration: const Duration(milliseconds: 200),
-                  child: IgnorePointer(
-                    ignoring: _isLoading,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildLabel("Tipo de Documento"),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: _tipos
-                              .map((tipo) => _buildTypeCard(
-                                    tipo,
-                                    selecionado: _tipoSelecionado,
-                                    onSelect: (v) => setState(() => _tipoSelecionado = v),
-                                  ))
-                              .toList(),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildLabel("Formato do Documento"),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: _formatos
-                              .map((formato) => _buildTypeCard(
-                                    formato,
-                                    selecionado: _formatoSelecionado,
-                                    onSelect: (v) => setState(() => _formatoSelecionado = v),
-                                  ))
-                              .toList(),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildLabel("Título do Documento"),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _tituloController,
-                          decoration: _inputDecoration(
-                            hintText: "Ex: Documento de Arquitetura do Sistema ERP",
-                            icon: Icons.title_rounded,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildLabel("Descrição (Opcional) — Dê dicas para a IA"),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: _descricaoController,
-                          maxLines: 3,
-                          decoration: _inputDecoration(
-                            hintText: "Descreva o que você espera neste documento...",
-                            icon: Icons.notes_rounded,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            _buildRodape(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey, fontSize: 13),
-    );
-  }
-
-  InputDecoration _inputDecoration({required String hintText, required IconData icon}) {
-    return InputDecoration(
-      hintText: hintText,
-      prefixIcon: Icon(icon, size: 20, color: Colors.grey.shade500),
-      filled: true,
-      fillColor: const Color(0xFFF7F7FB),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: _corPrimaria, width: 1.6),
-      ),
-    );
-  }
-
-  Widget _buildCabecalho() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 22, 16, 18),
-      decoration: BoxDecoration(
-        color: _corPrimaria.withOpacity(0.06),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-        border: Border(bottom: BorderSide(color: _corPrimaria.withOpacity(0.12))),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: _corPrimaria.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(FontAwesomeIcons.wandMagicSparkles, color: _corPrimaria, size: 18),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Criar Documento com IA", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                SizedBox(height: 2),
-                Text(
-                  "A IA gera o conteúdo e monta o Google Doc automaticamente",
-                  style: TextStyle(fontSize: 12.5, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: _isLoading ? null : () => Navigator.pop(context),
-            icon: const Icon(Icons.close),
-            color: Colors.grey.shade600,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRodape() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-      ),
+    return PainelIdv(
+      titulo: 'Novo documento com IA',
+      ajuda: 'A IA gera o conteúdo a partir dos dados do projeto e monta o '
+          'documento automaticamente.',
+      rotuloAcao: _isLoading ? 'Gerando...' : 'Gerar documento',
+      carregando: _isLoading,
+      aoConfirmar: _gerar,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_isLoading) ...[
             _buildBarraDeProgresso(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
           ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: _isLoading ? null : () => Navigator.pop(context),
-                child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          AnimatedOpacity(
+            opacity: _isLoading ? 0.45 : 1,
+            duration: const Duration(milliseconds: 200),
+            child: IgnorePointer(
+              ignoring: _isLoading,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const RotuloIdv('Tipo de documento', obrigatorio: true),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: _tipos
+                        .map((tipo) => _buildTypeCard(
+                              tipo,
+                              selecionado: _tipoSelecionado,
+                              onSelect: (v) =>
+                                  setState(() => _tipoSelecionado = v),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 22),
+                  const RotuloIdv('Formato'),
+                  OpcoesIdv<String>(
+                    opcoes: [for (final f in _formatos) f['label'] as String],
+                    valor: _formatoSelecionado,
+                    aoMudar: (v) => setState(() => _formatoSelecionado = v),
+                  ),
+                  const SizedBox(height: 22),
+                  CampoIdv(
+                    rotulo: 'Título do documento',
+                    controle: _tituloController,
+                    obrigatorio: true,
+                    dica: 'Ex.: Documento de arquitetura do sistema ERP',
+                  ),
+                  CampoIdv(
+                    rotulo: 'Instruções para a IA',
+                    controle: _descricaoController,
+                    linhas: 3,
+                    dica: 'Opcional: descreva o que você espera neste documento',
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: _isLoading ? null : _gerar,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Icon(FontAwesomeIcons.wandMagicSparkles, size: 16),
-                label: Text(_isLoading ? "Gerando..." : "Gerar Documento"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _corPrimaria,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: _corPrimaria.withOpacity(0.6),
-                  disabledForegroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
 
+  /// Etapa atual da geração e a barra de progresso (laranja da IDV).
   Widget _buildBarraDeProgresso() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                _statusLabel,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
-                overflow: TextOverflow.ellipsis,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CoresIdv.laranjaSuave,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _statusLabel,
+                  style: fonteIdv(tamanho: 13, peso: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "${(_progresso.clamp(0, 1) * 100).round()}%",
+                style: fonteIdv(
+                    tamanho: 13, peso: FontWeight.w700, cor: CoresIdv.laranja),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: _progresso.clamp(0, 1)),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                backgroundColor: Colors.white,
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(CoresIdv.laranja),
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              "${(_progresso.clamp(0, 1) * 100).round()}%",
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _corPrimaria),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: _progresso.clamp(0, 1)),
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOut,
-            builder: (context, value, _) => LinearProgressIndicator(
-              value: value,
-              minHeight: 8,
-              backgroundColor: _corPrimaria.withOpacity(0.12),
-              valueColor: const AlwaysStoppedAnimation<Color>(_corPrimaria),
-            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
+  /// Opção de tipo: azul-escuro quando escolhida, como as abas da IDV.
   Widget _buildTypeCard(
     Map<String, dynamic> item, {
     required String? selecionado,
     required ValueChanged<String> onSelect,
   }) {
     final isSelected = selecionado == item['label'];
-    return InkWell(
-      onTap: () => onSelect(item['label']),
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 130,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isSelected ? item['color'].withOpacity(0.1) : const Color(0xFFF7F7FB),
-          border: Border.all(
-            color: isSelected ? item['color'] : Colors.grey.shade300,
-            width: isSelected ? 2 : 1
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onSelect(item['label']),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 124,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? CoresIdv.azul : CoresIdv.campo,
+            border: Border.all(
+                color: isSelected ? CoresIdv.azul : CoresIdv.borda),
+            borderRadius: BorderRadius.circular(12),
           ),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Icon(item['icon'], color: isSelected ? item['color'] : Colors.grey, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              item['label'],
-              style: TextStyle(
-                color: isSelected ? item['color'] : Colors.grey[700],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 12
+          child: Column(
+            children: [
+              Icon(item['icon'],
+                  color: isSelected ? CoresIdv.laranja : CoresIdv.textoSecundario,
+                  size: 24),
+              const SizedBox(height: 8),
+              Text(
+                item['label'],
+                textAlign: TextAlign.center,
+                style: fonteIdv(
+                  tamanho: 12.5,
+                  peso: FontWeight.w600,
+                  cor: isSelected ? Colors.white : CoresIdv.textoSecundario,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

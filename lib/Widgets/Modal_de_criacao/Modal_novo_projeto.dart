@@ -3,6 +3,7 @@ import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/E
 import 'package:fabrica_software_app/models/projeto.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Modal_step.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/Steps/Planejamento_Orcamento_step/Planejamento_Orcamento_step.dart';
 import 'package:fabrica_software_app/config/projeto_dto.dart';
 import 'package:fabrica_software_app/providers/modal_criacao_projeto_provider.dart';
@@ -186,7 +187,7 @@ class _ModalNovoProjetoState extends State<ModalNovoProjeto> {
     final largura = tela.width < 760
         ? tela.width - 32
         : (tela.width * 0.58).clamp(720.0, 1180.0);
-    final tema = _temaIdv(Theme.of(context));
+    final tema = temaIdv(Theme.of(context));
 
     final painel = SizedBox(
       width: largura,
@@ -322,46 +323,6 @@ class _ModalNovoProjetoState extends State<ModalNovoProjeto> {
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Tema da IDV para as etapas: Inter, azul-escuro e nada com sombra.
-  ThemeData _temaIdv(ThemeData base) {
-    final forma =
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
-    return base.copyWith(
-      textTheme: GoogleFonts.interTextTheme(base.textTheme),
-      colorScheme: base.colorScheme.copyWith(
-        primary: StyleProjetos.azulEscuro,
-        surfaceTint: Colors.transparent,
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          shape: forma,
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          shape: forma,
-          side: const BorderSide(color: Color(0x330F1030)),
-        ),
-      ),
-      cardTheme:
-          const CardThemeData(elevation: 0, shadowColor: Colors.transparent),
-      chipTheme: base.chipTheme.copyWith(
-        elevation: 0,
-        pressElevation: 0,
-        shadowColor: Colors.transparent,
-        side: const BorderSide(color: Color(0x240F1030)),
-      ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        elevation: 0,
-        hoverElevation: 0,
-        focusElevation: 0,
-        highlightElevation: 0,
       ),
     );
   }

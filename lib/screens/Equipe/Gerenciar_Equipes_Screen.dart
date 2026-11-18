@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/App_bar/App_bar.dart';
@@ -390,24 +391,15 @@ class _DraggablePersonItemState extends State<DraggablePersonItem> {
                       onTap: () {
                         mostrarDialogo(
                           context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: Colors.white,
-                            surfaceTintColor: Colors.white,
-                            title: const Text("Excluir Pessoa"),
-                            content: Text("Tem certeza que deseja apagar ${widget.person.nome}?"),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx), 
-                                child: const Text("Cancelar", style: TextStyle(color: Colors.grey))
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  widget.provider.deletarContribuidor(widget.person.id!);
-                                  Navigator.pop(ctx);
-                                },
-                                child: const Text("Excluir", style: TextStyle(color: Colors.red)),
-                              ),
-                            ],
+                          builder: (ctx) => ConfirmacaoIdv(
+                            titulo: 'Excluir pessoa',
+                            mensagem: '${widget.person.nome} será excluído(a). '
+                                'Essa ação não pode ser desfeita.',
+                            rotuloAcao: 'Excluir pessoa',
+                            aoConfirmar: () {
+                              widget.provider.deletarContribuidor(widget.person.id!);
+                              Navigator.pop(ctx);
+                            },
                           ),
                         );
                       },

@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_novo_projeto.dart';
 import 'package:fabrica_software_app/models/projeto.dart';
@@ -70,25 +71,17 @@ class _ProjectCardState extends State<ProjectCard> {
   void _excluir() {
     mostrarDialogo(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Excluir projeto'),
-        content:
-            Text('Deseja realmente apagar "${widget.projeto.nomeProjeto}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await context
-                  .read<ProjetosProvider>()
-                  .excluirProjeto(widget.projeto.id ?? 0);
-            },
-            child: const Text('Excluir', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+      builder: (ctx) => ConfirmacaoIdv(
+        titulo: 'Excluir projeto',
+        mensagem: '"${widget.projeto.nomeProjeto}" será excluído. '
+            'Essa ação não pode ser desfeita.',
+        rotuloAcao: 'Excluir projeto',
+        aoConfirmar: () async {
+          Navigator.pop(ctx);
+          await context
+              .read<ProjetosProvider>()
+              .excluirProjeto(widget.projeto.id ?? 0);
+        },
       ),
     );
   }

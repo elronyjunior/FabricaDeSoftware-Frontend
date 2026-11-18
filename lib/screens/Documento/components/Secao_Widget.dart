@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:flutter/material.dart';
@@ -337,17 +338,11 @@ class _SecaoWidgetState extends State<SecaoWidget> {
   Future<void> _confirmarRemocao(BuildContext context, DocumentoEditorProvider provider) async {
     final confirmar = await mostrarDialogo<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text('Remover seção'),
-        content: const Text('Isso remove esta seção e tudo que estiver dentro dela. Tem certeza?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remover', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+      builder: (ctx) => ConfirmacaoIdv(
+        titulo: 'Remover seção',
+        mensagem: 'Esta seção e tudo o que estiver dentro dela serão removidos.',
+        rotuloAcao: 'Remover seção',
+        aoConfirmar: () => Navigator.pop(ctx, true),
       ),
     );
 

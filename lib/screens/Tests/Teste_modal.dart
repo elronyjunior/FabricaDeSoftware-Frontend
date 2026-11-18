@@ -1,4 +1,5 @@
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/models/teste.dart';
 import 'package:flutter/material.dart';
 
@@ -83,83 +84,40 @@ class _TesteModalState extends State<TesteModal> {
 
   @override
   Widget build(BuildContext context) {
-    // SingleChildScrollView permite rolar se o teclado cobrir o dialog
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0), // Padding interno do Dialog
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // Ocupa apenas o espaço necessário
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    widget.testeExistente == null ? 'Novo Teste' : 'Editar Teste',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              
-              TextFormField(
-                controller: _nomeController,
-                decoration: const InputDecoration(
-                  labelText: 'Nome do Teste',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                validator: (v) => v?.isEmpty == true ? 'Obrigatório' : null,
-              ),
-              const SizedBox(height: 16),
-              
-              TextFormField(
-                controller: _descricaoController,
-                decoration: const InputDecoration(
-                  labelText: 'Descrição / Critérios',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              
-              DropdownButtonFormField<String>(
-                value: _situacao,
-                decoration: const InputDecoration(
-                  labelText: 'Situação',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                items: _situacaoLabels.entries.map((e) => 
-                  DropdownMenuItem(value: e.key, child: Text(e.value))
-                ).toList(),
-                onChanged: (v) => setState(() => _situacao = v!),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              ElevatedButton(
-                onPressed: _isSaving ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: _isSaving 
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Salvar', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
+    final novo = widget.testeExistente == null;
+    return PainelIdv(
+      titulo: novo ? 'Novo teste' : 'Editar teste',
+      rotuloAcao: novo ? 'Criar teste' : 'Salvar alterações',
+      carregando: _isSaving,
+      aoConfirmar: _submit,
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CampoIdv(
+              rotulo: 'Nome do teste',
+              controle: _nomeController,
+              obrigatorio: true,
+              dica: 'Ex.: Login com e-mail inválido',
+            ),
+            CampoIdv(
+              rotulo: 'Descrição / critérios',
+              controle: _descricaoController,
+              linhas: 4,
+              dica: 'O que deve acontecer para o teste passar',
+            ),
+            const RotuloIdv('Situação'),
+            SelecaoIdv<String>(
+              hint: 'Selecione a situação',
+              valor: _situacao,
+              itens: _situacaoLabels.keys.toList(),
+              rotulo: (k) => _situacaoLabels[k]!,
+              aoMudar: (v) {
+                if (v != null) setState(() => _situacao = v);
+              },
+            ),
+          ],
         ),
       ),
     );
