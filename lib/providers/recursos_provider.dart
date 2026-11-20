@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/recurso.dart';
+import '../models/recurso_projeto.dart';
+import '../services/recurso_projeto_service.dart';
 import '../services/recursos_service.dart';
 
 class RecursosProvider with ChangeNotifier {
@@ -10,11 +12,23 @@ class RecursosProvider with ChangeNotifier {
   List<Recurso>? _recursos;
   Recurso? _recursoSelecionado;
 
+  /// Vínculos recurso ↔ projeto (para contar em quantos projetos cada
+  /// recurso é usado).
+  List<RecursoProjeto> _vinculos = [];
+
+  /// Último recurso criado (o painel do projeto vincula logo em seguida).
+  Recurso? ultimoCriado;
+
   // Getters
   bool get isLoading => _isLoading;
   String? get error => _error;
   List<Recurso>? get recursos => _recursos;
   Recurso? get recursoSelecionado => _recursoSelecionado;
+  List<RecursoProjeto> get vinculos => _vinculos;
+
+  /// Em quantos projetos o recurso está vinculado.
+  int usosDe(int? recursoId) =>
+      _vinculos.where((v) => v.recursoId == recursoId).length;
 
   // Carrega TODOS os recursos (Uso: Menu Lateral)
   Future<void> carregarRecursos() async {
@@ -25,6 +39,11 @@ class RecursosProvider with ChangeNotifier {
     try {
       _recursos = await _service.listarRecursos();
       _error = null;
+      try {
+        _vinculos = await RecursoProjetoService().getRecursosProjeto();
+      } catch (_) {
+        _vinculos = []; // sem a contagem, a lista ainda aparece
+      }
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -76,6 +95,7 @@ class RecursosProvider with ChangeNotifier {
     try {
       final recurso = await _service.criarRecurso(data);
       _recursos?.add(recurso);
+      ultimoCriado = recurso;
       _error = null;
       notifyListeners();
       return true;

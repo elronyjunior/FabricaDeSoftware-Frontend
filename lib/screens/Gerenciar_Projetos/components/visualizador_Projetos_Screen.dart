@@ -7,7 +7,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:fabrica_software_app/screens/Documento/Documentos_Projeto_Screen.dart';
 // Import da tela de recursos
-import 'package:fabrica_software_app/screens/Recursos/Recursos.dart';
+import 'package:fabrica_software_app/screens/Recursos/recursos_do_projeto.dart';
 
 class VisualizarProjetoScreen extends StatelessWidget {
   final Projeto projeto;
@@ -358,15 +358,9 @@ class VisualizarProjetoScreen extends StatelessWidget {
                             ],
                             buttonText: "Ver Recursos",
                             // NAVEGAÇÃO PASSANDO O PROJETO
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      Recursos(projetoVinculado: projeto),
-                                ),
-                              );
-                            },
+                            // Painel com os recursos vinculados ao projeto.
+                            onPressed: () =>
+                                abrirRecursosDoProjeto(context, projeto),
                           ),
                           // ----------------------------------
 
