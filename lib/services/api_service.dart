@@ -272,15 +272,22 @@ class ApiService {
       }
     }
 
-    // b) Equipe (Contribuidores)
-    if (dtoData['equipe'] != null) {
-      for (var membro in (dtoData['equipe'] as List)) {
+    // b) Equipe: as pessoas escolhidas são usuários (Gestão de usuários),
+    // mas a equipe no banco aponta para `contribuidores`. Cada usuário vira
+    // o contribuidor de mesmo e-mail (criado aqui se ainda não existir).
+    final equipe = (dtoData['equipe'] as List?) ?? const [];
+    if (equipe.isNotEmpty) {
+      final contribuidores = await _get(ApiConfig.contribuidores);
+      for (var membro in equipe) {
+        final contribuidorId =
+            await _contribuidorDoMembro(membro, contribuidores, headers);
+        if (contribuidorId == null) continue;
         await http.post(
           Uri.parse('${ApiConfig.baseUrl}${ApiConfig.contribuidoresProjeto}'),
           headers: headers,
           body: jsonEncode({
             "projeto_id": projetoId,
-            "contribuidor_id": _parseId(membro['id']),
+            "contribuidor_id": contribuidorId,
             "data_inicio": dtoData['data_inicio'],
             "data_fim": dtoData['data_final_previsto']
           })
@@ -370,6 +377,41 @@ class ApiService {
   static Future<List<dynamic>> getClientes() async => _get(ApiConfig.clientes);
   static Future<List<dynamic>> getTecnologias() async => _get(ApiConfig.tecnologias);
   static Future<List<dynamic>> getContribuidores() async => _get(ApiConfig.contribuidores);
+
+  /// Usuários do sistema (Gestão de usuários): as pessoas das equipes.
+  static Future<List<dynamic>> getUsuarios() async => _get(ApiConfig.usuarios);
+
+  /// Id do contribuidor de um membro da equipe (um usuário): o de mesmo
+  /// e-mail, ou um novo criado com os dados do usuário. Membros sem e-mail
+  /// (rascunhos antigos) já são contribuidores: usa o id deles.
+  static Future<int?> _contribuidorDoMembro(dynamic membro,
+      List<dynamic> contribuidores, Map<String, String> headers) async {
+    final email = (membro['email'] ?? '').toString().trim().toLowerCase();
+    if (email.isEmpty) return _parseId(membro['id']);
+
+    for (final c in contribuidores) {
+      if ((c['email'] ?? '').toString().trim().toLowerCase() == email) {
+        return _parseId(c['id']);
+      }
+    }
+    final resp = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.contribuidores}'),
+      headers: headers,
+      body: jsonEncode({
+        "nome": membro['nome'],
+        "email": membro['email'],
+        "cargo": membro['papel'],
+        "ativo": true,
+      }),
+    );
+    if (resp.statusCode != 200 && resp.statusCode != 201) {
+      print('Não foi possível criar o contribuidor de $email: ${resp.body}');
+      return null;
+    }
+    final criado = jsonDecode(resp.body);
+    contribuidores.add(criado);
+    return _parseId(criado['id']);
+  }
 
   /// Vínculos pessoa-projeto (com o nome da pessoa), para o filtro de membros.
   static Future<List<dynamic>> getContribuidoresProjetos() async =>
