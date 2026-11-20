@@ -1,0 +1,44 @@
+%% Figura 2 – Arquitetura do Software
+flowchart LR
+    U(("Usuário"))
+
+    subgraph APP["Aplicativo Flutter (Dart) — Web · Android · Windows"]
+        direction TB
+        T["Telas e componentes<br/>screens/ · Widgets/"]
+        P["Gerência de estado<br/>providers/ (provider)"]
+        S["Serviços HTTP<br/>services/ (http) · JWT em shared_preferences"]
+        M["Modelos<br/>models/ (fromJson / toJson)"]
+        T --> P --> S
+        S -. usa .-> M
+    end
+
+    subgraph API["API REST — Node.js 18 + Express 5 (Docker)"]
+        direction TB
+        R["Rotas /api/* (app.js) · CORS · JSON"]
+        A["Autenticação — authenticateToken (JWT)"]
+        C["Controllers<br/>projetos, clientes, usuários, documentos, requisitos,<br/>tecnologias, recursos, treinamentos, testes, relatórios, IA, código, GitHub"]
+        SV["Serviços<br/>ai/ · codegen/ · documentos/ · github/ · googleSheetsService"]
+        D["Acesso a dados — db.js (node-postgres)"]
+        R --> A --> C --> SV --> D
+    end
+
+    PG[("PostgreSQL<br/>17 tabelas")]
+
+    subgraph EXT["Serviços externos"]
+        direction TB
+        CL["Anthropic Claude API"]
+        GG["Google Drive / Docs / Sheets"]
+        GH["GitHub API (OAuth + repositórios)"]
+        MI["mermaid.ink (render de diagramas)"]
+        FB["Firebase Authentication"]
+    end
+
+    U -- interage --> T
+    S <-- "HTTPS · REST/JSON · Bearer JWT" --> R
+    D <-- SQL --> PG
+    SV --> CL & GG & GH & MI & FB
+    APP -- "firebase_auth · google_sign_in" --> FB
+
+    classDef default fill:#eaf2fb,stroke:#2f5d8a
+    style API fill:#f6fbf5,stroke:#3c7a3c
+    style EXT fill:#ffffff,stroke:#8a8a8a,stroke-dasharray:5 4

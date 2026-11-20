@@ -1,0 +1,273 @@
+%% Figura 5 – Diagrama de Classes (modelos Dart de lib/models)
+classDiagram
+    direction LR
+    class Usuario {
+        +int? id
+        +String nome
+        +String email
+        +String? nivel
+        +String? telefone
+        +String? senha
+        +fromJson(Map json)$ Usuario
+        +toJson() Map~String, dynamic~
+    }
+    class Cliente {
+        +int? id
+        +String razaoSocial
+        +String cnpj
+        +String email
+        +String? telefone
+        +String? setor
+        +String? contato
+        +DateTime? dataCriacao
+        +int? enderecoId
+        +fromJson(Map json)$ Cliente
+        +toJson() Map~String, dynamic~
+        +copyWith() Cliente
+    }
+    class Endereco {
+        +int? id
+        +String logradouro
+        +String cep
+        +String? numero
+        +String? bairro
+        +String cidade
+        +String estado
+        +String pais
+        +String? complemento
+        +fromJson(Map json)$ Endereco
+        +toJson() Map~String, dynamic~
+        +copyWith() Endereco
+    }
+    class Projeto {
+        +int? id
+        +String nomeProjeto
+        +String? descricao
+        +String? tipo
+        +String? modeloProjeto
+        +String? metodologia
+        +String? escopo
+        +DateTime? dataInicio
+        +DateTime? dataFinalPrevisto
+        +DateTime? dataFinal
+        +ComplexidadeProjeto? complexidade
+        +double? orcamentoEstimado
+        +DateTime? dataCriacao
+        +int clienteId
+        +String? clienteNome
+        +int? responsavelId
+        +int criadoPorId
+        +fromJson(Map json)$ Projeto
+        +toJson() Map~String, dynamic~
+    }
+    class Requisito {
+        +int? id
+        +String tipo
+        +String descricao
+        +String? observacoes
+        +fromJson(Map json)$ Requisito
+        +toJson() Map~String, dynamic~
+        +copyWith() Requisito
+    }
+    class RequisitoProjeto {
+        +int requisitoId
+        +int projetoId
+        +String? codigoRequisito
+        +PrioridadeRequisito? prioridade
+        +DateTime? dataAprovacao
+        +int? aprovadoPorId
+        +int? criadoPorId
+        +fromJson(Map json)$ RequisitoProjeto
+        +toJson() Map~String, dynamic~
+        +copyWith() RequisitoProjeto
+    }
+    class Tecnologia {
+        +int? id
+        +String nome
+        +String? categoria
+        +String? descricao
+        +fromJson(Map json)$ Tecnologia
+        +toJson() Map~String, dynamic~
+        +copyWith() Tecnologia
+    }
+    class TecnologiaProjeto {
+        +int tecnologiaId
+        +int projetoId
+        +DateTime? dataAprovacao
+        +int? aprovadoPorId
+        +fromJson(Map json)$ TecnologiaProjeto
+        +toJson() Map~String, dynamic~
+        +copyWith() TecnologiaProjeto
+    }
+    class Contribuidor {
+        +int? id
+        +String nome
+        +String email
+        +String? cargo
+        +String? empresa
+        +bool ativo
+        +fromJson(Map json)$ Contribuidor
+        +toJson() Map~String, dynamic~
+    }
+    class ContribuidorProjeto {
+        +int? id
+        +int projetoId
+        +int contribuidorId
+        +String? dataInicio
+        +fromJson(Map json)$ ContribuidorProjeto
+        +toJson() Map~String, dynamic~
+    }
+    class Recurso {
+        +int? id
+        +String nome
+        +String tipo
+        +bool disponivel
+        +String? descricao
+        +DateTime? dataCriacao
+        +int? criadoPorId
+        +fromJson(Map json)$ Recurso
+        +toJson() Map~String, dynamic~
+        +copyWith() Recurso
+    }
+    class RecursoProjeto {
+        +int recursoId
+        +int projetoId
+        +double? custoHora
+        +DateTime dataAlocacao
+        +DateTime? dataDesalocacao
+        +fromJson(Map json)$ RecursoProjeto
+        +toJson() Map~String, dynamic~
+        +copyWith() RecursoProjeto
+    }
+    class Documento {
+        +int? id
+        +String? tipo
+        +String? descricao
+        +String arquivoUrl
+        +String nomeDoArquivo
+        +DateTime? dataCriacao
+        +DateTime? dataAprovacao
+        +int projetoId
+        +int? aprovadoPorId
+        +fromJson(Map json)$ Documento
+        +toJson() Map~String, dynamic~
+        +copyWith() Documento
+    }
+    class Treinamento {
+        +int? id
+        +String nome
+        +String? descricao
+        +String? tipoTreinamento
+        +DateTime? dataInicio
+        +DateTime? dataTermino
+        +int? duracaoHoras
+        +String? instrutor
+        +int projetoId
+        +int? criadoPorId
+        +int? documentoId
+        +fromJson(Map json)$ Treinamento
+        +toJson() Map~String, dynamic~
+        +copyWith() Treinamento
+    }
+    class Teste {
+        +int? id
+        +String nome
+        +String? descricao
+        +int projetoId
+        +String situacao
+        +fromJson(Map json)$ Teste
+        +toJson() Map~String, dynamic~
+        +copyWith() Teste
+    }
+    class Log {
+        +int? id
+        +String nomeTabela
+        +String? nomeCampo
+        +String chavePrimariaRegistro
+        +String? chaveSecundariaRegistro
+        +String tipoAcao
+        +String? valorAntigo
+        +String? valorNovo
+        +DateTime? dataHora
+        +int? modificadoPorId
+        +fromJson(Map json)$ Log
+        +toJson() Map~String, dynamic~
+        +copyWith() Log
+    }
+    class ComplexidadeProjeto {
+        <<enumeration>>
+        baixa
+        media
+        alta
+    }
+    class PrioridadeRequisito {
+        <<enumeration>>
+        baixa
+        media
+        alta
+        critica
+    }
+    class DocumentoConteudo {
+        +String titulo
+        +String? tipoDocumento
+        +String? versao
+        +DocumentoMetadata metadata
+        +String? sumarioExecutivo
+        +List~SecaoDocumento~ secoes
+        +List~TabelaDocumento~ tabelas
+        +String? conclusao
+        +fromJson(Map json) DocumentoConteudo
+        +toJson() Map~String, dynamic~
+        +buscarPorLocalId(int id) SecaoDocumento?
+        +adicionarSecaoIrma(int id) void
+        +adicionarSubsecao(int id) void
+        +removerSecao(int id) void
+    }
+    class SecaoDocumento {
+        +String titulo
+        +int nivel
+        +String conteudo
+        +List~String~ itens
+        +List~SecaoDocumento~ subsecoes
+        +int localId
+        +fromJson(Map json) SecaoDocumento
+        +toJson() Map~String, dynamic~
+    }
+    class DocumentoMetadata {
+        +String? projeto
+        +String? autor
+        +String? objetivo
+        +fromJson(Map json) DocumentoMetadata
+        +toJson() Map~String, dynamic~
+    }
+    class TabelaDocumento {
+        +String? titulo
+        +List~String~ cabecalhos
+        +List~List~String~~ linhas
+        +fromJson(Map json) TabelaDocumento
+        +toJson() Map~String, dynamic~
+    }
+    Cliente "0..*" --> "0..1" Endereco
+    Projeto "0..*" --> "1" Cliente
+    Projeto "0..*" --> "1" Usuario : criadoPor
+    Projeto "0..*" --> "0..1" Usuario : responsavel
+    ContribuidorProjeto "0..*" --> "1" Contribuidor
+    ContribuidorProjeto "0..*" --> "1" Projeto
+    TecnologiaProjeto "0..*" --> "1" Projeto
+    TecnologiaProjeto "0..*" --> "1" Tecnologia
+    RequisitoProjeto "0..*" --> "1" Projeto
+    RequisitoProjeto "0..*" --> "1" Requisito
+    RecursoProjeto "0..*" --> "1" Projeto
+    RecursoProjeto "0..*" --> "1" Recurso
+    Teste "0..*" --> "1" Projeto
+    Documento "0..*" --> "1" Projeto
+    Treinamento "0..*" --> "1" Projeto
+    Treinamento "0..*" --> "0..1" Documento
+    Log "0..*" --> "0..1" Usuario : modificadoPor
+    Projeto ..> ComplexidadeProjeto
+    RequisitoProjeto ..> PrioridadeRequisito
+    Documento ..> DocumentoConteudo : conteudo_json
+    DocumentoConteudo "1" *-- "1" DocumentoMetadata
+    DocumentoConteudo "1" *-- "0..*" SecaoDocumento
+    DocumentoConteudo "1" *-- "0..*" TabelaDocumento
+    SecaoDocumento "1" *-- "0..*" SecaoDocumento : subsecoes

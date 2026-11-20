@@ -1,0 +1,71 @@
+%% Figura 1 – Diagrama de Casos de Uso (Mermaid não tem notação UML de casos de uso: atores = retângulos, casos = elipses)
+flowchart LR
+    Visitante["🧍 Visitante"]:::ator
+    Usuario["🧍 Usuário"]:::ator
+    Firebase["Firebase Auth (Google)"]:::externo
+    Claude["IA Claude (Anthropic)"]:::externo
+    GitHub["GitHub"]:::externo
+    Google["Google Drive, Docs e Sheets"]:::externo
+
+    subgraph Sistema["Sistema Fábrica de Software"]
+        direction TB
+        subgraph Acesso["Acesso ao sistema"]
+            UC1([Cadastrar conta])
+            UC2([Fazer login])
+            UC3([Recuperar senha])
+            UC4([Entrar com conta Google])
+        end
+        subgraph Projetos["Projetos"]
+            UC5([Gerenciar projetos])
+            UC6([Filtrar projetos])
+            UC7([Criar projeto])
+            UC8([Levantar requisitos com IA]):::ia
+            UC9([Gerar diagrama de casos de uso com IA]):::ia
+            UC10([Estimar orçamento com IA]):::ia
+            UC11([Visualizar painel do projeto])
+        end
+        subgraph Documentos["Documentos do projeto"]
+            UC12([Gerenciar documentos do projeto])
+            UC13([Gerar documento com IA]):::ia
+            UC14([Gerar código-fonte com IA]):::ia
+            UC15([Visualizar e editar documento])
+            UC16([Publicar código no GitHub])
+        end
+        subgraph Cadastros["Cadastros e equipe"]
+            UC17([Gerenciar clientes])
+            UC18([Gerenciar usuários])
+            UC19([Gerenciar tecnologias])
+            UC20([Gerenciar equipe e recursos])
+        end
+        subgraph Treinos["Treinamentos e testes"]
+            UC21([Gerenciar treinamentos])
+            UC22([Controlar presença])
+            UC23([Gerenciar testes do projeto])
+        end
+        subgraph Rel["Relatórios"]
+            UC24([Consultar relatórios])
+        end
+    end
+
+    Visitante --- UC1 & UC2 & UC3
+    Usuario --- UC5 & UC7 & UC11 & UC12 & UC15 & UC17 & UC18 & UC19 & UC20 & UC21 & UC23 & UC24
+
+    UC4 -. "«extend»" .-> UC2
+    UC6 -. "«extend»" .-> UC5
+    UC8 -. "«extend»" .-> UC7
+    UC9 -. "«extend»" .-> UC7
+    UC10 -. "«extend»" .-> UC7
+    UC13 -. "«extend»" .-> UC12
+    UC14 -. "«extend»" .-> UC12
+    UC16 -. "«extend»" .-> UC15
+    UC22 -. "«extend»" .-> UC21
+
+    UC4 --- Firebase
+    UC8 & UC9 & UC10 & UC13 & UC14 --- Claude
+    UC16 --- GitHub
+    UC13 & UC22 --- Google
+
+    classDef ator fill:#ffffff,stroke:#1a1a1a,stroke-width:1.5px,font-weight:bold
+    classDef externo fill:#ffffff,stroke:#1a1a1a,stroke-dasharray:4 3
+    classDef ia fill:#f1ecfb,stroke:#6b4fa0
+    classDef default fill:#eaf2fb,stroke:#2f5d8a

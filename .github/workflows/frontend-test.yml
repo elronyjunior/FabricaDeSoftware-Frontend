@@ -5,6 +5,12 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
+
+# Um push novo no mesmo branch cancela a execução anterior que ainda estava rodando.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -17,7 +23,7 @@ jobs:
       - name: Configurar Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.5'
+          flutter-version: '3.35.7'
           channel: stable
           cache: true
 
@@ -31,5 +37,25 @@ jobs:
         # --fatal-infos ligado de volta; por enquanto só travamos em erro real.
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
-      - name: Rodar testes
-        run: flutter test
+      - name: Rodar testes com cobertura
+        run: flutter test --coverage
+
+      - name: Resumo da cobertura na página da execução
+        if: always()
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            awk -F: '/^LF:/ {total += $2} /^LH:/ {cobertas += $2}
+              END {
+                pct = total ? (100 * cobertas / total) : 0
+                printf "## Cobertura de testes (frontend)\n\n| Linhas cobertas | Total | %% |\n| --- | --- | --- |\n| %d | %d | %.2f%% |\n", cobertas, total, pct
+              }' coverage/lcov.info >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Publicar relatório de cobertura (lcov)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-frontend
+          path: coverage/lcov.info
+          retention-days: 14
+          if-no-files-found: ignore

@@ -1,0 +1,72 @@
+%% Figura 6 – Diagrama de Atividades: criação de projeto (raias como subgrafos)
+flowchart TB
+    subgraph USU["Usuário"]
+        I((" ")):::inicio
+        U1["Clicar em Novo projeto"]
+        U2["Preencher aba Informações:<br/>nome, tipo, cliente, tecnologias e escopo"]
+        D1{"Gerar requisitos<br/>com IA?"}
+        U3["Cadastrar requisitos manualmente"]
+        U4["Revisar requisitos (pelo menos 1)"]
+        D2{"Gerar diagrama de<br/>casos de uso?<br/>(aba opcional)"}
+        D3{"Ajustar o diagrama<br/>pelo chat?"}
+        U5["Montar equipe (pelo menos 1 pessoa)<br/>e alocar recursos"]
+        U6["Definir período e orçamento"]
+        D4{"Estimar orçamento<br/>com IA?"}
+        U7["Clicar em Criar projeto"]
+        U8["Corrigir os dados da aba indicada"]
+        U9["Ver aviso de erro e tentar novamente"]
+    end
+    subgraph APP["Aplicativo (Flutter)"]
+        A1["Abrir painel de criação com 5 abas"]
+        A2["Enviar escopo do projeto"]
+        A3["Listar requisitos sugeridos para revisão"]
+        A4["Solicitar diagrama de casos de uso"]
+        A5["Exibir diagrama gerado"]
+        A6["Enviar período e dados do projeto"]
+        A7["Preencher orçamento sugerido"]
+        D5{"Abas obrigatórias<br/>preenchidas e válidas?"}
+        A8["Abrir a aba pendente e exibir aviso"]
+        D7{"Projeto criado<br/>com sucesso?"}
+        A9["Fechar painel e exibir 'Projeto criado!'"]
+        F((("  "))):::fim
+    end
+    subgraph API["API (Node.js)"]
+        S1["POST /api/ai/gerar-requisitos"]
+        S2["POST /api/ai/gerar-diagrama-caso-uso"]
+        S3["Renderizar imagem do diagrama (mermaid.ink)"]
+        S4["POST /api/ai/refinar-diagrama-caso-uso"]
+        S5["POST /api/ai/estimar-orcamento"]
+        S6["POST /api/projetos (gravar projeto)"]
+        S7["Vincular tecnologias, equipe, recursos e requisitos"]
+        D6{"Diagrama de casos<br/>de uso foi gerado?"}
+        S8["Salvar diagrama como documento do projeto"]
+    end
+    subgraph IA["IA Claude"]
+        C1["Gerar lista de requisitos a partir do escopo"]
+        C2["Gerar diagrama em código Mermaid"]
+        C3["Ajustar diagrama conforme o pedido"]
+        C4["Estimar orçamento do projeto"]
+    end
+
+    I --> U1 --> A1 --> U2 --> D1
+    D1 -- sim --> A2 --> S1 --> C1 --> A3 --> U4
+    D1 -- não --> U3 --> U4
+    U4 --> D2
+    D2 -- sim --> A4 --> S2 --> C2 --> S3 --> A5 --> D3
+    D3 -- sim --> S4 --> C3 --> S3
+    D3 -- não --> U5
+    D2 -- não --> U5
+    U5 --> U6 --> D4
+    D4 -- sim --> A6 --> S5 --> C4 --> A7 --> U7
+    D4 -- não --> U7
+    U7 --> D5
+    D5 -- não --> A8 --> U8 --> U7
+    D5 -- sim --> S6 --> S7 --> D6
+    D6 -- sim --> S8 --> D7
+    D6 -- não --> D7
+    D7 -- sim --> A9 --> F
+    D7 -- não --> U9 --> U7
+
+    classDef inicio fill:#1a1a1a,stroke:#1a1a1a
+    classDef fim fill:#1a1a1a,stroke:#1a1a1a
+    classDef default fill:#eaf2fb,stroke:#2f5d8a

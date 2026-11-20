@@ -1,0 +1,66 @@
+name: Release
+
+# Ao criar uma tag de versão (ex.: git tag v1.4.0 && git push origin v1.4.0),
+# compila o app e cria um Release no GitHub com o APK e o site em .zip.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag já existente para gerar o release (ex.: v1.4.0)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.35.7'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Instalar dependências
+        run: flutter pub get
+
+      - name: Rodar testes antes de publicar
+        run: flutter test
+
+      - name: Compilar web e APK
+        run: |
+          flutter build web --release
+          flutter build apk --release
+
+      - name: Empacotar os arquivos
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/fabrica-software-$TAG.apk"
+          (cd build/web && zip -qr "../../dist/fabrica-software-web-$TAG.zip" .)
+          ls -la dist
+
+      - name: Criar o Release no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: dist/*
