@@ -71,7 +71,6 @@ class ModalNovoProjeto extends StatefulWidget {
 
 class _ModalNovoProjetoState extends State<ModalNovoProjeto> {
   static const _borda = Color(0x1F0F1030);
-  static const _fundoAbas = Color(0xFFEEF0F6);
 
   int _aba = 0;
 
@@ -378,26 +377,10 @@ class _ModalNovoProjetoState extends State<ModalNovoProjeto> {
 
   Widget _abas() {
     final etapas = _etapas;
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: _fundoAbas,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      // Abas dividem a largura toda; o texto nunca é cortado (em janelas
-      // estreitas ele só diminui).
-      child: Row(
-        children: [
-          for (var i = 0; i < etapas.length; i++)
-            Expanded(
-              child: _Aba(
-                rotulo: etapas[i].tabName,
-                selecionada: i == _aba,
-                onTap: _criando ? null : () => _irPara(i),
-              ),
-            ),
-        ],
-      ),
+    return AbasIdv(
+      rotulos: [for (final e in etapas) e.tabName],
+      atual: _aba,
+      aoTocar: _criando ? null : _irPara,
     );
   }
 
@@ -476,52 +459,6 @@ class _ModalNovoProjetoState extends State<ModalNovoProjeto> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Aba extends StatelessWidget {
-  const _Aba({
-    required this.rotulo,
-    required this.selecionada,
-    required this.onTap,
-  });
-
-  final String rotulo;
-  final bool selecionada;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selecionada ? StyleProjetos.azulEscuro : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              rotulo,
-              maxLines: 1,
-              softWrap: false,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: selecionada ? FontWeight.w600 : FontWeight.w500,
-                color:
-                    selecionada ? Colors.white : StyleProjetos.textoSecundario,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

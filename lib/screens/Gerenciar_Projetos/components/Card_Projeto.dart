@@ -183,6 +183,17 @@ class _ProjectCardState extends State<ProjectCard> {
                           // No hover, o tipo dá lugar às ações (com fade).
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 160),
+                            // Encostado à direita: o padrão centraliza, e o
+                            // tipo ficava no meio do rodapé quando a troca
+                            // era interrompida (ex.: ao fixar, o card muda
+                            // de lugar no meio da animação).
+                            layoutBuilder: (atual, anteriores) => Stack(
+                              alignment: Alignment.centerRight,
+                              children: [
+                                ...anteriores,
+                                if (atual != null) atual,
+                              ],
+                            ),
                             child: _hover
                                 ? Row(
                                     key: const ValueKey('acoes'),

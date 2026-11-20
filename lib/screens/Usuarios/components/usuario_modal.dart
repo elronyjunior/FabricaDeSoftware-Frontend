@@ -1,8 +1,16 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:flutter/material.dart';
 import 'package:fabrica_software_app/models/usuario.dart';
 import 'package:provider/provider.dart';
 import 'package:fabrica_software_app/providers/usuarios_provider.dart';
+
+/// Níveis do banco (tipo `nivel_usuario` em db/schema.sql) e como aparecem.
+const niveisUsuario = {
+  'USUARIO': 'Usuário',
+  'MASTER': 'Master',
+  'ADMINISTRADOR': 'Administrador',
+};
 
 enum UsuarioModalMode {
   view,
@@ -41,7 +49,11 @@ class _UsuarioModalState extends State<UsuarioModal> {
     super.initState();
     _nomeController = TextEditingController(text: widget.usuario?.nome ?? '');
     _emailController = TextEditingController(text: widget.usuario?.email ?? '');
-    _nivelController = TextEditingController(text: widget.usuario?.nivel ?? 'colaborador');
+    // O banco só aceita os valores do tipo nivel_usuario (ver [niveisUsuario]);
+    // um nível antigo fora da lista vira "Usuário".
+    final nivel = (widget.usuario?.nivel ?? '').toUpperCase();
+    _nivelController = TextEditingController(
+        text: niveisUsuario.containsKey(nivel) ? nivel : 'USUARIO');
     _telefoneController = TextEditingController(text: widget.usuario?.telefone ?? '');
     _senhaController = TextEditingController(); // Senha começa vazia
   }
@@ -104,8 +116,27 @@ class _UsuarioModalState extends State<UsuarioModal> {
         ]),
         const SizedBox(height: 6),
         const SecaoIdv('Acesso'),
-        _campo('Nível', _nivelController,
-            obrigatorio: true, dica: 'Ex.: admin, colaborador'),
+        if (_visualizando)
+          _campo('Nível', TextEditingController(
+              text: niveisUsuario[_nivelController.text] ?? _nivelController.text))
+        else
+          Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const RotuloIdv('Nível', obrigatorio: true),
+                SelecaoIdv<String>(
+                  hint: 'Escolha o nível',
+                  valor: _nivelController.text,
+                  itens: niveisUsuario.keys.toList(),
+                  rotulo: (n) => niveisUsuario[n]!,
+                  aoMudar: (n) => setState(
+                      () => _nivelController.text = n ?? 'USUARIO'),
+                ),
+              ],
+            ),
+          ),
         if (!_visualizando)
           CampoIdv(
             rotulo: isCreate ? 'Senha' : 'Nova senha',

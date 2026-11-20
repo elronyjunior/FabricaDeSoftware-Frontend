@@ -1,174 +1,85 @@
-import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
-// --- Ficheiro: lib/widgets/endereco_modal.dart ---
-
-import 'package:fabrica_software_app/providers/endereco_provider.dart';
-import 'package:flutter/material.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/models/endereco.dart';
 import 'package:fabrica_software_app/screens/Clientes/components/mapa_endereco.dart';
+import 'package:flutter/material.dart';
 
-enum EnderecoModalMode {
-  view,
-  edit,
-  create,
-}
+// =====================================================================
+// Endereço do cliente: aba "Endereço" do painel do cliente (antes abria
+// num modal por cima do modal do cliente).
+// =====================================================================
 
-class EnderecoModal extends StatefulWidget {
-  final EnderecoModalMode mode;
-  final Endereco? endereco;
-  final EnderecosProvider enderecosProvider;
+/// Campos do endereço. Quem cria (o painel do cliente) também descarta.
+class EnderecoControles {
+  final logradouro = TextEditingController();
+  final cep = TextEditingController();
+  final numero = TextEditingController();
+  final bairro = TextEditingController();
+  final cidade = TextEditingController();
+  final estado = TextEditingController();
+  final pais = TextEditingController(text: 'Brasil');
+  final complemento = TextEditingController();
 
-  const EnderecoModal({
-    super.key,
-    required this.mode,
-    required this.enderecosProvider,
-    this.endereco,
-  });
+  List<TextEditingController> get _todos =>
+      [logradouro, cep, numero, bairro, cidade, estado, pais, complemento];
 
-  @override
-  State<EnderecoModal> createState() => _EnderecoModalState();
-}
-
-class _EnderecoModalState extends State<EnderecoModal> {
-  late TextEditingController _logradouroController;
-  late TextEditingController _cepController;
-  late TextEditingController _numeroController;
-  late TextEditingController _bairroController;
-  late TextEditingController _cidadeController;
-  late TextEditingController _estadoController;
-  late TextEditingController _paisController;
-  late TextEditingController _complementoController;
-
-  final _formKey = GlobalKey<FormState>();
-  bool _isModalLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _logradouroController = TextEditingController(text: widget.endereco?.logradouro ?? '');
-    _cepController = TextEditingController(text: widget.endereco?.cep ?? '');
-    _numeroController = TextEditingController(text: widget.endereco?.numero ?? '');
-    _bairroController = TextEditingController(text: widget.endereco?.bairro ?? '');
-    _cidadeController = TextEditingController(text: widget.endereco?.cidade ?? '');
-    _estadoController = TextEditingController(text: widget.endereco?.estado ?? '');
-    _paisController = TextEditingController(text: widget.endereco?.pais ?? 'Brasil');
-    _complementoController = TextEditingController(text: widget.endereco?.complemento ?? '');
+  void preencher(Endereco e) {
+    logradouro.text = e.logradouro;
+    cep.text = e.cep;
+    numero.text = e.numero ?? '';
+    bairro.text = e.bairro ?? '';
+    cidade.text = e.cidade;
+    estado.text = e.estado;
+    pais.text = e.pais;
+    complemento.text = e.complemento ?? '';
   }
 
-  @override
-  void dispose() {
-    _logradouroController.dispose();
-    _cepController.dispose();
-    _numeroController.dispose();
-    _bairroController.dispose();
-    _cidadeController.dispose();
-    _estadoController.dispose();
-    _paisController.dispose();
-    _complementoController.dispose();
-    super.dispose();
-  }
-  
-  Future<void> _submitForm() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-
-    setState(() { _isModalLoading = true; });
-
-    final provider = widget.enderecosProvider;
-
-    final data = {
-      'logradouro': _logradouroController.text,
-      'cep': _cepController.text,
-      'numero': _numeroController.text.isEmpty ? null : _numeroController.text,
-      'bairro': _bairroController.text.isEmpty ? null : _bairroController.text,
-      'cidade': _cidadeController.text,
-      'estado': _estadoController.text,
-      'pais': _paisController.text,
-      'complemento': _complementoController.text.isEmpty ? null : _complementoController.text,
+  /// Corpo enviado ao back-end (mesmos campos de antes).
+  Map<String, dynamic> dados() {
+    String? opcional(TextEditingController c) =>
+        c.text.trim().isEmpty ? null : c.text.trim();
+    return {
+      'logradouro': logradouro.text.trim(),
+      'cep': cep.text.trim(),
+      'numero': opcional(numero),
+      'bairro': opcional(bairro),
+      'cidade': cidade.text.trim(),
+      'estado': estado.text.trim(),
+      'pais': pais.text.trim(),
+      'complemento': opcional(complemento),
     };
+  }
 
-    try {
-      if (widget.mode == EnderecoModalMode.edit) {
-        final enderecoAtualizado = await provider.atualizarEndereco(widget.endereco!.id!, data);
-        if (!mounted) return;
-        Navigator.pop(context, enderecoAtualizado.id);
-
-      } else if (widget.mode == EnderecoModalMode.create) {
-        final novoEndereco = await provider.criarEndereco(data);
-        if (!mounted) return;
-        Navigator.pop(context, novoEndereco.id);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      avisar(context, 'Erro ao salvar endereço: $e', tipo: TipoAviso.erro);
-    } finally {
-      if (mounted) setState(() { _isModalLoading = false; });
+  void dispose() {
+    for (final c in _todos) {
+      c.dispose();
     }
   }
+}
 
-  bool get _visualizando => widget.mode == EnderecoModalMode.view;
+/// Mapa + campos do endereço (vai dentro do Form do painel do cliente).
+class FormularioEndereco extends StatefulWidget {
+  const FormularioEndereco({
+    super.key,
+    required this.controles,
+    this.somenteLeitura = false,
+  });
+
+  final EnderecoControles controles;
+  final bool somenteLeitura;
 
   @override
-  Widget build(BuildContext context) {
-    final (titulo, acao) = switch (widget.mode) {
-      EnderecoModalMode.view => ('Endereço', null),
-      EnderecoModalMode.edit => ('Editar endereço', 'Salvar endereço'),
-      EnderecoModalMode.create => ('Novo endereço', 'Adicionar endereço'),
-    };
+  State<FormularioEndereco> createState() => _FormularioEnderecoState();
+}
 
-    return PainelIdv(
-      titulo: titulo,
-      rotuloAcao: acao,
-      carregando: _isModalLoading,
-      aoConfirmar: _submitForm,
-      largura: 600,
-      child: Form(key: _formKey, child: _buildBody(context)),
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SecaoIdv('Localização',
-            descricao: _visualizando
-                ? null
-                : 'Busque ou marque no mapa para preencher o endereço.'),
-        MapaEndereco(
-          somenteLeitura: _visualizando,
-          enderecoInicial: _enderecoDigitado,
-          aoEscolher: _preencherPeloMapa,
-        ),
-        const SizedBox(height: 22),
-        const SecaoIdv('Endereço'),
-        LinhaCamposIdv(children: [
-          _campo('CEP', _cepController,
-              obrigatorio: true,
-              dica: '00000-000',
-              teclado: TextInputType.number),
-          _campo('Número', _numeroController, dica: 'Ex.: 120'),
-        ]),
-        _campo('Logradouro', _logradouroController,
-            obrigatorio: true, dica: 'Rua, avenida...'),
-        LinhaCamposIdv(children: [
-          _campo('Bairro', _bairroController),
-          _campo('Complemento', _complementoController,
-              dica: 'Sala, bloco...'),
-        ]),
-        LinhaCamposIdv(children: [
-          _campo('Cidade', _cidadeController, obrigatorio: true),
-          _campo('UF', _estadoController, obrigatorio: true, dica: 'SP'),
-          _campo('País', _paisController, obrigatorio: true),
-        ]),
-      ],
-    );
-  }
+class _FormularioEnderecoState extends State<FormularioEndereco> {
+  EnderecoControles get _c => widget.controles;
 
   /// Endereço já preenchido (edição/visualização), para centrar o mapa.
   String get _enderecoDigitado => [
-        _logradouroController.text,
-        _numeroController.text,
-        _cidadeController.text,
-        _estadoController.text,
+        _c.logradouro.text,
+        _c.numero.text,
+        _c.cidade.text,
+        _c.estado.text,
       ].where((p) => p.trim().isNotEmpty).join(', ');
 
   /// Ponto marcado no mapa: preenche os campos que o mapa conhece. O número
@@ -181,17 +92,16 @@ class _EnderecoModalState extends State<EnderecoModal> {
 
     // Outra rua: o bairro antigo não vale mais.
     final outraRua = e.logradouro != null &&
-        e.logradouro!.toLowerCase() !=
-            _logradouroController.text.trim().toLowerCase();
+        e.logradouro!.toLowerCase() != _c.logradouro.text.trim().toLowerCase();
     setState(() {
-      if (outraRua) _bairroController.clear();
-      _numeroController.text = e.numero ?? '';
-      por(_cepController, e.cep);
-      por(_logradouroController, e.logradouro);
-      por(_bairroController, e.bairro);
-      por(_cidadeController, e.cidade);
-      por(_estadoController, e.uf);
-      por(_paisController, e.pais);
+      if (outraRua) _c.bairro.clear();
+      _c.numero.text = e.numero ?? '';
+      por(_c.cep, e.cep);
+      por(_c.logradouro, e.logradouro);
+      por(_c.bairro, e.bairro);
+      por(_c.cidade, e.cidade);
+      por(_c.estado, e.uf);
+      por(_c.pais, e.pais);
     });
   }
 
@@ -201,9 +111,47 @@ class _EnderecoModalState extends State<EnderecoModal> {
       rotulo: rotulo,
       controle: controle,
       obrigatorio: obrigatorio,
-      somenteLeitura: _visualizando,
+      somenteLeitura: widget.somenteLeitura,
       dica: dica,
       teclado: teclado,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SecaoIdv('Localização',
+            descricao: widget.somenteLeitura
+                ? null
+                : 'Busque ou marque no mapa para preencher o endereço.'),
+        MapaEndereco(
+          somenteLeitura: widget.somenteLeitura,
+          enderecoInicial: _enderecoDigitado,
+          aoEscolher: _preencherPeloMapa,
+        ),
+        const SizedBox(height: 22),
+        const SecaoIdv('Endereço'),
+        LinhaCamposIdv(children: [
+          _campo('CEP', _c.cep,
+              obrigatorio: true,
+              dica: '00000-000',
+              teclado: TextInputType.number),
+          _campo('Número', _c.numero, dica: 'Ex.: 120'),
+        ]),
+        _campo('Logradouro', _c.logradouro,
+            obrigatorio: true, dica: 'Rua, avenida...'),
+        LinhaCamposIdv(children: [
+          _campo('Bairro', _c.bairro),
+          _campo('Complemento', _c.complemento, dica: 'Sala, bloco...'),
+        ]),
+        LinhaCamposIdv(children: [
+          _campo('Cidade', _c.cidade, obrigatorio: true),
+          _campo('UF', _c.estado, obrigatorio: true, dica: 'SP'),
+          _campo('País', _c.pais, obrigatorio: true),
+        ]),
+      ],
     );
   }
 }
