@@ -43,6 +43,31 @@ class StyleProjetos {
         ],
       );
 
+  /// Painel grande (tabelas, listas, gráficos): mesmo fundo dos cards, borda
+  /// fina e uma sombra bem difusa. Sem a sombra marcada dos cards soltos,
+  /// que entre blocos vizinhos formava faixas escuras.
+  static BoxDecoration painel({double raio = 18}) => BoxDecoration(
+        color: fundoCard,
+        borderRadius: BorderRadius.circular(raio),
+        border: Border.all(color: const Color(0x140F1030)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1C1F3A).withOpacity(0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      );
+
+  /// Fundo da linha com o mouse por cima, dentro de um painel.
+  static const Color linhaHover = Color(0xFFECEEF6);
+
+  /// Fundo do cabeçalho das tabelas.
+  static const Color cabecalhoTabela = Color(0xFFECEEF5);
+
+  /// Linha divisória dentro dos painéis.
+  static const Color divisoria = Color(0x140F1030);
+
   // ---------------- Medidas ----------------
   static const double sidebarLargura = 70; // menu fechado (mais fino)
   static const double sidebarRaio = 35;

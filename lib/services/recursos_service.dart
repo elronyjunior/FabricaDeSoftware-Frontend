@@ -13,6 +13,16 @@ class RecursosService extends BaseApiService {
     return getAll<Recurso>(Recurso.fromJson);
   }
 
+  /// Projetos em que o recurso está vinculado (nome do projeto + custo/hora
+  /// e data de alocação do vínculo). Rota: /api/recursos/:id/projetos
+  Future<List<Map<String, dynamic>>> projetosDoRecurso(int id) async {
+    final resposta = await get('/$id/projetos');
+    return handleResponse(resposta, (json) {
+      if (json is! List) throw ApiException('Resposta inválida do servidor');
+      return json.cast<Map<String, dynamic>>();
+    });
+  }
+
   // Listar recursos de um projeto específico
   // Rota Backend: /api/recursos-projeto/projeto/:id
   // Como o endpoint base é '/recursos', usamos '/..' para voltar um nível e acessar a outra rota
