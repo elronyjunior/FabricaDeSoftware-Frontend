@@ -1,3 +1,6 @@
+// O back-end manda ids bigint como texto ("12"): aceita os dois.
+int? _int(dynamic v) => v == null ? null : (v is int ? v : int.tryParse(v.toString()));
+
 class Treinamento {
   final int? id;
   final String nome;
@@ -27,7 +30,7 @@ class Treinamento {
 
   factory Treinamento.fromJson(Map<String, dynamic> json) {
     return Treinamento(
-      id: json['id'],
+      id: _int(json['id']),
       nome: json['nome'],
       descricao: json['descricao'],
       tipoTreinamento: json['tipo_treinamento'],
@@ -37,11 +40,11 @@ class Treinamento {
       dataTermino: json['data_termino'] != null 
           ? DateTime.parse(json['data_termino']) 
           : null,
-      duracaoHoras: json['duracao_horas'],
+      duracaoHoras: _int(json['duracao_horas']),
       instrutor: json['instrutor'],
-      projetoId: json['projeto_id'],
-      criadoPorId: json['criado_por_id'],
-      documentoId: json['documento_id'],
+      projetoId: _int(json['projeto_id'])!,
+      criadoPorId: _int(json['criado_por_id']),
+      documentoId: _int(json['documento_id']),
     );
   }
 
