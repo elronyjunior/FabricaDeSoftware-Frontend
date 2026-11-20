@@ -20,6 +20,7 @@ class RotasApp {
   static const usuarios = '/Usuarios';
   static const clientes = '/Clientes';
   static const tecnologias = '/Tecnologias';
+  static const recursos = '/Recursos';
   static const perfil = '/Account';
 
   /// Destino de cada item do menu, na mesma ordem de [SidebarFlutuante.itens].
@@ -30,6 +31,7 @@ class RotasApp {
     usuarios,
     clientes,
     tecnologias,
+    recursos,
   ];
 
   /// Telas que não exibem o menu lateral.
@@ -386,7 +388,9 @@ class LayoutPrincipal extends StatelessWidget {
   static const double recuoConteudo = 26 + StyleProjetos.sidebarLargura;
 
   /// Altura mínima (na escala do Figma) para o menu caber sem cortar.
-  static const double _alturaMinimaMenu = 640;
+  // Altura que os 7 itens do menu + o rodapé do usuário precisam; abaixo
+  // disso o menu inteiro diminui de escala para caber.
+  static const double _alturaMinimaMenu = 660;
 
   static double escala(double largura) =>
       (largura / larguraBase).clamp(0.75, 2.0).toDouble();
