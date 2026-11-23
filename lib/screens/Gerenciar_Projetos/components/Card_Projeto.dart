@@ -222,7 +222,7 @@ class _ProjectCardState extends State<ProjectCard> {
                                     children: [
                                       // Fixado: o pino fica à vista.
                                       if (_fixado) ...[
-                                        const Icon(FontAwesomeIcons.thumbtack,
+                                        const FaIcon(FontAwesomeIcons.thumbtack,
                                             size: 13,
                                             color: StyleProjetos.laranja),
                                         const SizedBox(width: 8),
@@ -403,7 +403,7 @@ class _Acao extends StatefulWidget {
     required this.onTap,
   });
 
-  final IconData icone;
+  final FaIconData icone;
   final String dica;
   final Color cor;
   final VoidCallback onTap;

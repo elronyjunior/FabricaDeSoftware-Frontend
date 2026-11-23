@@ -229,7 +229,7 @@ class _Acao extends StatefulWidget {
     required this.aoTocar,
   });
 
-  final IconData icone;
+  final FaIconData icone;
   final String dica;
   final Color cor;
   final VoidCallback aoTocar;
@@ -256,7 +256,7 @@ class _AcaoState extends State<_Acao> {
             duration: const Duration(milliseconds: 150),
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: Icon(widget.icone,
+              child: FaIcon(widget.icone,
                   size: 17,
                   color: _hover ? widget.cor : widget.cor.withOpacity(0.75)),
             ),

@@ -136,7 +136,7 @@ class ClienteRow extends StatelessWidget {
 
 // Componente auxiliar para padronizar os botões de ação
 class _ActionButton extends StatelessWidget {
-  final IconData icon;
+  final FaIconData icon;
   final VoidCallback? onTap;
   final Color color;
 

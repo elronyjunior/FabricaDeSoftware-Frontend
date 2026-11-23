@@ -23,7 +23,7 @@ class EdicaoProjetoStep extends ModalStep {
   String get ajuda =>
       'Altere as informações gerais do projeto. Os campos com * são obrigatórios.';
   @override
-  IconData get icon => FontAwesomeIcons.penToSquare;
+  IconData get icon => FontAwesomeIcons.penToSquare.data;
   @override
   List<Color> get cores => [Colors.blue.shade700, Colors.blue.shade500];
 

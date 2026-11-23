@@ -190,7 +190,7 @@ class BotaoIa extends StatelessWidget {
                 child: CircularProgressIndicator(
                     strokeWidth: 2, color: Colors.white))
           else
-            const Icon(FontAwesomeIcons.wandMagicSparkles,
+            const FaIcon(FontAwesomeIcons.wandMagicSparkles,
                 size: 14, color: StyleProjetos.laranjaClaro),
           const SizedBox(width: 10),
           Text(carregando ? (rotuloCarregando ?? rotulo) : rotulo),
@@ -1401,7 +1401,7 @@ class AbaAssistenteIdv extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(FontAwesomeIcons.wandMagicSparkles,
+                  const FaIcon(FontAwesomeIcons.wandMagicSparkles,
                       size: 15, color: StyleProjetos.laranjaClaro),
                   const SizedBox(width: 10),
                   Text('Assistente IA',

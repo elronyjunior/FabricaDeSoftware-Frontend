@@ -139,7 +139,7 @@ class _ChatIAPanelState extends State<ChatIAPanel> {
           borderRadius: BorderRadius.circular(tamanho * 0.3),
         ),
         alignment: Alignment.center,
-        child: Icon(FontAwesomeIcons.wandMagicSparkles,
+        child: FaIcon(FontAwesomeIcons.wandMagicSparkles,
             size: tamanho * 0.4, color: StyleProjetos.laranjaClaro),
       );
 

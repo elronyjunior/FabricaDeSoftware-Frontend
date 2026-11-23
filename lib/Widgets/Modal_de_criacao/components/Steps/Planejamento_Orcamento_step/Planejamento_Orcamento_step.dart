@@ -21,7 +21,7 @@ class PlanejamentoOrcamentoStep extends ModalStep {
       'Escolha o período do projeto no calendário (início e fim) e informe o orçamento, ou peça uma estimativa à IA.';
 
   @override
-  IconData get icon => FontAwesomeIcons.calendarCheck;
+  IconData get icon => FontAwesomeIcons.calendarCheck.data;
 
   @override
   List<Color> get cores => <Color>[Colors.orangeAccent, Colors.deepOrange];

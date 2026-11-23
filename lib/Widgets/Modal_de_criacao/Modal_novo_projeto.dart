@@ -357,7 +357,7 @@ class _ModalNovoProjetoState extends State<ModalNovoProjeto> {
               padding: const EdgeInsets.only(right: 8),
               child: TextButton.icon(
                 onPressed: _assistente.abrir,
-                icon: const Icon(FontAwesomeIcons.wandMagicSparkles,
+                icon: const FaIcon(FontAwesomeIcons.wandMagicSparkles,
                     size: 14, color: StyleProjetos.laranja),
                 label: Text('Assistente IA',
                     style: GoogleFonts.inter(

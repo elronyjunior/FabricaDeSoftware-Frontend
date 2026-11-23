@@ -9,7 +9,7 @@ class NivelIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    late IconData icon = FontAwesomeIcons.x;
+    late FaIconData icon = FontAwesomeIcons.x;
     if (nivel.toUpperCase() == 'MASTER') {
       icon = FontAwesomeIcons.dragon;
     }
