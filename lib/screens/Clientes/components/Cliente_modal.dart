@@ -2,7 +2,7 @@ import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.d
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/providers/endereco_provider.dart';
-import 'package:fabrica_software_app/screens/Clientes/components/Endereco_modal.dart';
+import 'package:fabrica_software_app/screens/Clientes/components/endereco_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:fabrica_software_app/models/cliente.dart';
 import 'package:provider/provider.dart';
