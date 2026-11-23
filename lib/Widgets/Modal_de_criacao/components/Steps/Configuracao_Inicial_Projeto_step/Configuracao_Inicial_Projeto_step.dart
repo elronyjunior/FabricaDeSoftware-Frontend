@@ -22,7 +22,7 @@ class ConfiguracaoInicialProjetoStep extends ModalStep {
       'Dados gerais do projeto: nome, tipo, modelo, cliente e tecnologias. Os campos com * são obrigatórios.';
 
   @override
-  IconData get icon => FontAwesomeIcons.gears;
+  IconData get icon => FontAwesomeIcons.gears.data;
 
   @override
   List<Color> get cores => <Color>[const Color.fromARGB(255, 4, 187, 233)];

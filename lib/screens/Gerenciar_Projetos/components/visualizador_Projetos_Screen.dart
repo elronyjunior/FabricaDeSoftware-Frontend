@@ -392,7 +392,7 @@ class VisualizarProjetoScreen extends StatelessWidget {
 
                           _DashboardInfoCard(
                             title: "Relatórios de Treinamentos",
-                            icon: FontAwesomeIcons.graduationCap,
+                            icon: FontAwesomeIcons.graduationCap.data,
                             themeColor: const Color(0xFFEA580C),
                             stats: const [
                               {"label": "Treinamentos", "value": "Verificar"},

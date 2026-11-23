@@ -360,7 +360,7 @@ class ConfirmacaoIdv extends StatelessWidget {
                     ),
                     child: Icon(
                         perigo
-                            ? FontAwesomeIcons.trashCan
+                            ? FontAwesomeIcons.trashCan.data
                             : Icons.help_outline_rounded,
                         size: 19,
                         color: cor),

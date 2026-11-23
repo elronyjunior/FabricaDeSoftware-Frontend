@@ -123,7 +123,7 @@ class TecnologiaRow extends StatelessWidget {
 }
 
 class _ActionButton extends StatelessWidget {
-  final IconData icon;
+  final FaIconData icon;
   final VoidCallback? onTap;
   final Color color;
 

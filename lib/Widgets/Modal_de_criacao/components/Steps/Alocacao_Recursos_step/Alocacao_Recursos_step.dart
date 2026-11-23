@@ -18,7 +18,7 @@ class AlocacaoRecursosStep extends ModalStep {
   String get ajuda =>
       'Marque as pessoas que vão participar do projeto (ao menos uma) e os recursos que ele vai usar. Use a busca para encontrar mais rápido.';
   @override
-  IconData get icon => FontAwesomeIcons.usersGear;
+  IconData get icon => FontAwesomeIcons.usersGear.data;
   @override
   List<Color> get cores => <Color>[Colors.teal, Colors.green];
 

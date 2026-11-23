@@ -44,7 +44,7 @@ class LevantamentosRequisitosStep extends ModalStep {
       'Descreva o escopo do projeto e gere os requisitos com IA, ou adicione manualmente. Depois, ajuste a lista pelo assistente de IA. É preciso ter ao menos um requisito.';
 
   @override
-  IconData get icon => FontAwesomeIcons.listCheck;
+  IconData get icon => FontAwesomeIcons.listCheck.data;
 
   @override
   List<Color> get cores => <Color>[Colors.blueAccent, Colors.purpleAccent];
@@ -815,7 +815,7 @@ class _LevantamentoRequisitosContentState
                   message: req.isAiGenerated ? 'Gerado pela IA' : 'Manual',
                   child: Icon(
                       req.isAiGenerated
-                          ? FontAwesomeIcons.wandMagicSparkles
+                          ? FontAwesomeIcons.wandMagicSparkles.data
                           : Icons.person_outline_rounded,
                       size: 13,
                       color: req.isAiGenerated

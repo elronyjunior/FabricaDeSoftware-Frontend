@@ -38,7 +38,7 @@ class DiagramaCasoUsoStep extends ModalStep {
       'A IA gera um diagrama de casos de uso a partir dos requisitos funcionais. Esta aba é opcional.';
 
   @override
-  IconData get icon => FontAwesomeIcons.diagramProject;
+  IconData get icon => FontAwesomeIcons.diagramProject.data;
 
   @override
   List<Color> get cores => <Color>[Colors.deepPurple, Colors.indigo];

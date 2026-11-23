@@ -54,7 +54,7 @@ class ModalDeCriacao extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child:
-                            FaIcon(provider.returnIcon(), color: Colors.white),
+                            Icon(provider.returnIcon(), color: Colors.white),
                       ),
                       const SizedBox(width: 12),
 
