@@ -704,49 +704,10 @@ class _Abas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0x330F1030)))),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (final a in _Aba.values)
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => aoMudar(a),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    margin: const EdgeInsets.only(right: 28),
-                    padding: const EdgeInsets.only(bottom: 10, top: 4),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: a == atual
-                              ? StyleProjetos.laranja
-                              : Colors.transparent,
-                          width: 2.5,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      a.rotulo,
-                      style: GoogleFonts.inter(
-                        fontSize: 14.5,
-                        fontWeight:
-                            a == atual ? FontWeight.w600 : FontWeight.w500,
-                        color: a == atual
-                            ? StyleProjetos.texto
-                            : StyleProjetos.textoSecundario,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+    return AbasSublinhadas(
+      rotulos: [for (final a in _Aba.values) a.rotulo],
+      atual: atual.index,
+      aoMudar: (i) => aoMudar(_Aba.values[i]),
     );
   }
 }

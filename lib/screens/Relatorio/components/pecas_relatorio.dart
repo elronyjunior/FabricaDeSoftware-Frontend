@@ -563,3 +563,66 @@ class SemDados extends StatelessWidget {
     );
   }
 }
+
+/// Abas sublinhadas (Relatórios, Visualizar projeto): a escolhida em
+/// texto escuro com um traço laranja embaixo, sobre uma linha fina.
+class AbasSublinhadas extends StatelessWidget {
+  const AbasSublinhadas({
+    super.key,
+    required this.rotulos,
+    required this.atual,
+    required this.aoMudar,
+  });
+
+  final List<String> rotulos;
+  final int atual;
+  final ValueChanged<int> aoMudar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Color(0x330F1030)))),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < rotulos.length; i++)
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => aoMudar(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    margin: const EdgeInsets.only(right: 28),
+                    padding: const EdgeInsets.only(bottom: 10, top: 4),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: i == atual
+                              ? StyleProjetos.laranja
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      rotulos[i],
+                      style: GoogleFonts.inter(
+                        fontSize: 14.5,
+                        fontWeight:
+                            i == atual ? FontWeight.w600 : FontWeight.w500,
+                        color: i == atual
+                            ? StyleProjetos.texto
+                            : StyleProjetos.textoSecundario,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
