@@ -171,6 +171,14 @@ class _CardTecnologiaState extends State<_CardTecnologia> {
                           const Spacer(),
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 160),
+                            // Encostado à direita (o padrão centraliza).
+                            layoutBuilder: (atual, anteriores) => Stack(
+                              alignment: Alignment.centerRight,
+                              children: [
+                                ...anteriores,
+                                if (atual != null) atual,
+                              ],
+                            ),
                             child: _hover
                                 ? Row(
                                     key: const ValueKey('acoes'),

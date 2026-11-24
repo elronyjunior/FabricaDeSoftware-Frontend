@@ -206,6 +206,39 @@ class AuthService {
   }
   // --- FIM DO MÉTODO NOVO ---
 
+  /// Confere se [senha] é a senha atual de [email], sem mexer na sessão
+  /// (usa a rota de login só para validar; o token devolvido é descartado).
+  /// Devolve false quando a senha não confere.
+  Future<bool> conferirSenha(String email, String senha) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/auth/login'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'email': email, 'senha': senha}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      throw ApiException('Não foi possível falar com o servidor.');
+    }
+  }
+
+  /// Guarda o nome e o e-mail novos depois que o próprio usuário edita o
+  /// perfil (o menu lateral e o perfil leem daqui).
+  Future<void> atualizarDadosLocais({String? nome, String? email}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (nome != null) {
+      _cachedUserName = nome;
+      await prefs.setString(_userNameKey, nome);
+    }
+    if (email != null) {
+      _cachedUserEmail = email;
+      await prefs.setString(_userEmailKey, email);
+    }
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
 

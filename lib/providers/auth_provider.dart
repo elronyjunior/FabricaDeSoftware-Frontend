@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
 import '../services/base_api_service.dart';
+import '../services/foto_perfil_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final _authService = AuthService.instance;
@@ -39,6 +40,7 @@ class AuthProvider with ChangeNotifier {
       _userNivel = await _authService.userNivel;
       _email = await _authService.userEmail;
       _nome = await _authService.userName;
+      await carregarFoto();
     }
     notifyListeners();
   }
@@ -61,6 +63,7 @@ class AuthProvider with ChangeNotifier {
         _userNivel = await _authService.userNivel;
         _email = email; 
         _nome = await _authService.userName;
+        await carregarFoto();
       }
       notifyListeners();
       return success;
@@ -154,6 +157,35 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Foto de perfil (do servidor ou guardada neste navegador).
+  FotoPerfil _foto = const FotoPerfil();
+  FotoPerfil get foto => _foto;
+
+  /// Lê a foto guardada neste navegador para o usuário logado.
+  Future<void> carregarFoto() async {
+    final id = _userId ?? await _authService.userId;
+    if (id == null) return;
+    final bytes = await FotoPerfilService.instance.local(id);
+    if (bytes != null && _foto.url == null) {
+      _foto = FotoPerfil(bytes: bytes);
+      notifyListeners();
+    }
+  }
+
+  /// Troca a foto mostrada no perfil e no menu.
+  void definirFoto(FotoPerfil foto) {
+    _foto = foto;
+    notifyListeners();
+  }
+
+  /// Atualiza nome e e-mail depois que o usuário edita o próprio perfil.
+  Future<void> atualizarPerfil({String? nome, String? email}) async {
+    await _authService.atualizarDadosLocais(nome: nome, email: email);
+    if (nome != null) _nome = nome;
+    if (email != null) _email = email;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     await _authService.logout();
     _isAuthenticated = false;
@@ -161,6 +193,7 @@ class AuthProvider with ChangeNotifier {
     _userNivel = null;
     _email = null; 
     _nome = null;
+    _foto = const FotoPerfil();
     notifyListeners();
   }
 }

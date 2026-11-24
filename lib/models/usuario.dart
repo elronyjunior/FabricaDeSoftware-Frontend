@@ -6,6 +6,9 @@ class Usuario {
   final String? telefone;
   final String? senha; // Usado apenas para envio (Create/Update)
 
+  /// Link da foto de perfil (quando o back-end passar a devolver `foto_url`).
+  final String? fotoUrl;
+
   Usuario({
     this.id,
     required this.nome,
@@ -13,6 +16,7 @@ class Usuario {
     this.nivel,
     this.telefone,
     this.senha,
+    this.fotoUrl,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,7 @@ class Usuario {
       email: json['email'] ?? '',
       nivel: json['nivel'],
       telefone: json['telefone'],
+      fotoUrl: json['foto_url'],
     );
   }
 
