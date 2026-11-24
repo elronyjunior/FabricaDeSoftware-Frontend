@@ -13,7 +13,6 @@ import 'package:fabrica_software_app/screens/Equipe/Gerenciar_Equipes_Screen.dar
 import 'package:fabrica_software_app/screens/Recursos/Recursos.dart';
 import 'package:fabrica_software_app/screens/Relatorio/Relatorio_Screen.dart';
 import 'package:fabrica_software_app/screens/Tecnologias/Tecnologias.dart';
-import 'package:fabrica_software_app/screens/Tests/Teste_screen.dart';
 import 'package:fabrica_software_app/screens/Usuarios/usuarios.dart';
 // ignore: unused_import
 import 'package:fabrica_software_app/services/requisito_service.dart';
