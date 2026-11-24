@@ -41,8 +41,16 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
   // Google Doc); "Diagrama Mermaid" pede um diagrama Mermaid renderizado em
   // imagem, salvo só no banco (sem Google Docs).
   final List<Map<String, dynamic>> _formatos = [
-    {'label': 'Texto', 'icon': Icons.article_outlined, 'color': Colors.blueGrey},
-    {'label': 'Diagrama Mermaid', 'icon': Icons.account_tree_outlined, 'color': Colors.deepPurple},
+    {
+      'label': 'Texto',
+      'icon': Icons.article_outlined,
+      'descricao': 'Documento com seções, criado no Google Docs.',
+    },
+    {
+      'label': 'Diagrama Mermaid',
+      'icon': Icons.account_tree_outlined,
+      'descricao': 'Imagem do diagrama gerada em Mermaid, salva no projeto.',
+    },
   ];
 
   @override
@@ -196,24 +204,37 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const RotuloIdv('Tipo de documento', obrigatorio: true),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: _tipos
-                        .map((tipo) => _buildTypeCard(
-                              tipo,
-                              selecionado: _tipoSelecionado,
-                              onSelect: (v) =>
-                                  setState(() => _tipoSelecionado = v),
-                            ))
-                        .toList(),
+                  SelecaoIdv<String>(
+                    hint: 'Escolha o tipo de documento',
+                    valor: _tipoSelecionado,
+                    itens: [for (final t in _tipos) t['label'] as String],
+                    rotulo: (t) => t,
+                    icone: (t) => _tipos
+                        .firstWhere((x) => x['label'] == t)['icon'] as IconData,
+                    aoMudar: (v) => setState(() => _tipoSelecionado = v),
                   ),
                   const SizedBox(height: 22),
                   const RotuloIdv('Formato'),
-                  OpcoesIdv<String>(
-                    opcoes: [for (final f in _formatos) f['label'] as String],
-                    valor: _formatoSelecionado,
-                    aoMudar: (v) => setState(() => _formatoSelecionado = v),
+                  // Dois cartões explicados: o escolhido com borda laranja.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var i = 0; i < _formatos.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 12),
+                        Expanded(
+                          child: _CartaoFormato(
+                            titulo: _formatos[i]['label'] as String,
+                            descricao: _formatos[i]['descricao'] as String,
+                            icone: _formatos[i]['icon'] as IconData,
+                            escolhido:
+                                _formatoSelecionado == _formatos[i]['label'],
+                            aoTocar: () => setState(() =>
+                                _formatoSelecionado =
+                                    _formatos[i]['label'] as String),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 22),
                   CampoIdv(
@@ -285,44 +306,80 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
       ),
     );
   }
+}
 
-  /// Opção de tipo: azul-escuro quando escolhida, como as abas da IDV.
-  Widget _buildTypeCard(
-    Map<String, dynamic> item, {
-    required String? selecionado,
-    required ValueChanged<String> onSelect,
-  }) {
-    final isSelected = selecionado == item['label'];
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => onSelect(item['label']),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 124,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected ? CoresIdv.azul : CoresIdv.campo,
-            border: Border.all(
-                color: isSelected ? CoresIdv.azul : CoresIdv.borda),
-            borderRadius: BorderRadius.circular(12),
+/// Cartão de formato: ícone, nome e o que gera; o escolhido com borda
+/// laranja e a bolinha marcada.
+class _CartaoFormato extends StatelessWidget {
+  const _CartaoFormato({
+    required this.titulo,
+    required this.descricao,
+    required this.icone,
+    required this.escolhido,
+    required this.aoTocar,
+  });
+
+  final String titulo;
+  final String descricao;
+  final IconData icone;
+  final bool escolhido;
+  final VoidCallback aoTocar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: escolhido,
+      label: titulo,
+      child: Material(
+        color: escolhido ? CoresIdv.laranjaSuave : CoresIdv.campo,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: escolhido ? CoresIdv.laranja : CoresIdv.borda,
+            width: escolhido ? 1.5 : 1,
           ),
-          child: Column(
-            children: [
-              Icon(item['icon'],
-                  color: isSelected ? CoresIdv.laranja : CoresIdv.textoSecundario,
-                  size: 24),
-              const SizedBox(height: 8),
-              Text(
-                item['label'],
-                textAlign: TextAlign.center,
-                style: fonteIdv(
-                  tamanho: 12.5,
-                  peso: FontWeight.w600,
-                  cor: isSelected ? Colors.white : CoresIdv.textoSecundario,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: aoTocar,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  escolhido
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 20,
+                  color: escolhido ? CoresIdv.laranja : CoresIdv.textoSecundario,
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Icon(icone, size: 18, color: CoresIdv.azul),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(titulo,
+                              style: fonteIdv(
+                                  tamanho: 14, peso: FontWeight.w600)),
+                        ),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(descricao,
+                          style: fonteIdv(
+                              tamanho: 12.5,
+                              cor: CoresIdv.textoSecundario,
+                              altura: 1.4)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
