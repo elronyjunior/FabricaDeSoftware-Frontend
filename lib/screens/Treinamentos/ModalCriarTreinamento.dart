@@ -41,6 +41,9 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
   DateTime? _dataInicio;
   DateTime? _dataTermino;
 
+  /// Erro do período (o PeriodoIdv não é um campo de formulário).
+  String? _erroPeriodo;
+
   final List<String> _tipos = ['Técnico', 'Comportamental', 'Gestão', 'Processos', 'Outros'];
 
   @override
@@ -73,7 +76,11 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
 
   // Função de Salvar (Cria ou Edita)
   Future<void> _salvar() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formOk = _formKey.currentState!.validate();
+    final periodoOk = _dataInicio != null && _dataTermino != null;
+    setState(() => _erroPeriodo =
+        periodoOk ? null : 'Escolha o início e o término no calendário.');
+    if (!formOk || !periodoOk) return;
 
     setState(() => _isLoading = true);
 
@@ -132,28 +139,6 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
     }
   }
 
-  Future<void> _selecionarData(bool isInicio) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: isInicio ? (_dataInicio ?? DateTime.now()) : (_dataTermino ?? DateTime.now()),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) => Theme(data: ThemeData.light().copyWith(primaryColor: const Color(0xFF2563EB)), child: child!),
-    );
-
-    if (picked != null) {
-      setState(() {
-        if (isInicio) {
-          _dataInicio = picked;
-          _dataInicioCtrl.text = DateFormat('dd/MM/yyyy').format(picked);
-        } else {
-          _dataTermino = picked;
-          _dataTerminoCtrl.text = DateFormat('dd/MM/yyyy').format(picked);
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isEdicao = widget.treinamentoEdicao != null;
@@ -193,12 +178,25 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
             ),
             const SizedBox(height: 6),
             const SecaoIdv('Período e carga horária'),
-            LinhaCamposIdv(children: [
-              _buildDatePicker('Data de início', _dataInicioCtrl,
-                  () => _selecionarData(true)),
-              _buildDatePicker('Data de término', _dataTerminoCtrl,
-                  () => _selecionarData(false)),
-            ]),
+            // Período no padrão do design system: um campo, um calendário
+            // (o 1º clique marca o início e o 2º, o término).
+            const RotuloIdv('Período', obrigatorio: true),
+            PeriodoIdv(
+              inicio: _dataInicio,
+              fim: _dataTermino,
+              aoMudar: (i, f) => setState(() {
+                _dataInicio = i;
+                _dataTermino = f;
+                if (i != null && f != null) _erroPeriodo = null;
+              }),
+            ),
+            if (_erroPeriodo != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 16),
+                child: Text(_erroPeriodo!,
+                    style: fonteIdv(tamanho: 12, cor: CoresIdv.vermelho)),
+              ),
+            const SizedBox(height: 18),
             CampoIdv(
               rotulo: 'Carga horária (h)',
               controle: _cargaHorariaCtrl,
@@ -209,35 +207,6 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Data no visual dos campos; o calendário abre ao tocar.
-  Widget _buildDatePicker(
-      String label, TextEditingController ctrl, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          RotuloIdv(label, obrigatorio: true),
-          TextFormField(
-            controller: ctrl,
-            readOnly: true,
-            onTap: onTap,
-            style: fonteIdv(),
-            mouseCursor: SystemMouseCursors.click,
-            validator: (v) => v == null || v.isEmpty
-                ? 'Escolha a ${label.toLowerCase()}'
-                : null,
-            decoration: decoracaoCampoIdv(
-              dica: 'dd/mm/aaaa',
-              sufixo: const Icon(Icons.calendar_today_rounded,
-                  size: 18, color: CoresIdv.textoSecundario),
-            ),
-          ),
-        ],
       ),
     );
   }
