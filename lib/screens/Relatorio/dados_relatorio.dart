@@ -149,18 +149,36 @@ class DadosRelatorioProvider extends ChangeNotifier {
 
   bool get temDados => _projetos.isNotEmpty;
 
+  // A tela pode fechar no meio do carregar() (várias requisições): sem esta
+  // guarda, o notifyListeners depois do dispose lançava erro.
+  bool _descartado = false;
+
+  @override
+  void dispose() {
+    _descartado = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_descartado) super.notifyListeners();
+  }
+
   Future<void> carregar() async {
     carregando = true;
     erro = null;
     indisponiveis.clear();
     notifyListeners();
 
-    Future<List<T>> pegar<T>(String nome, Future<List<T>> Function() f) async {
+    // null = falhou. Num recarregamento que falha, os dados antigos ficam
+    // (melhor que zerar a tela) e a parte entra em [indisponiveis], que a
+    // tela já mostra como aviso.
+    Future<List<T>?> pegar<T>(String nome, Future<List<T>> Function() f) async {
       try {
         return await f();
       } catch (_) {
         indisponiveis.add(nome);
-        return <T>[];
+        return null;
       }
     }
 
@@ -168,33 +186,51 @@ class DadosRelatorioProvider extends ChangeNotifier {
       _projetos = await _projetoService.getProjetos();
     } catch (e) {
       erro = e.toString();
+      // Com dados antigos a tela não mostra [erro]; avisa pelo banner.
+      if (_projetos.isNotEmpty) indisponiveis.add('projetos (mostrando os dados anteriores)');
     }
     final resultados = await Future.wait([
       pegar('testes', _testeService.getTestes),
       pegar('treinamentos', _treinamentoService.getTreinamentos),
       pegar('recursos', _recursoService.getRecursosProjeto),
     ]);
-    _testes = resultados[0] as List<Teste>;
-    _treinamentos = resultados[1] as List<Treinamento>;
-    _alocacoes = resultados[2] as List<RecursoProjeto>;
+    if (_descartado) return;
+    _testes = (resultados[0] as List<Teste>?) ?? _testes;
+    _treinamentos = (resultados[1] as List<Treinamento>?) ?? _treinamentos;
+    _alocacoes = (resultados[2] as List<RecursoProjeto>?) ?? _alocacoes;
 
     carregando = false;
+    _invalidarCache();
     notifyListeners();
   }
 
   void aplicarFiltros(FiltrosRelatorio novos) {
     filtros = novos;
+    _invalidarCache();
     notifyListeners();
   }
 
   void mudarPeriodo(PeriodoRapido periodo) {
     filtros = filtros.copiar(periodo: periodo);
+    _invalidarCache();
     notifyListeners();
   }
 
   void buscar(String texto) {
     busca = texto;
+    _invalidarCache();
     notifyListeners();
+  }
+
+  // Cache da lista filtrada: `projetos` é lido dezenas de vezes por build
+  // (cada número/gráfico), e refiltrava e reordenava tudo a cada leitura.
+  // Invalidado sempre que mudam os dados, os filtros ou a busca.
+  List<Projeto>? _cacheProjetos;
+  Set<int>? _cacheIds;
+
+  void _invalidarCache() {
+    _cacheProjetos = null;
+    _cacheIds = null;
   }
 
   // ---------------- Opções dos filtros ----------------
@@ -238,7 +274,9 @@ class DadosRelatorioProvider extends ChangeNotifier {
     return true;
   }
 
-  List<Projeto> get projetos {
+  List<Projeto> get projetos => _cacheProjetos ??= _filtrarProjetos();
+
+  List<Projeto> _filtrarProjetos() {
     final termo = _semAcento(busca.trim());
     final f = filtros;
     return _projetos.where((p) {
@@ -261,7 +299,7 @@ class DadosRelatorioProvider extends ChangeNotifier {
       ..sort((a, b) => (dataDo(b) ?? DateTime(1900)).compareTo(dataDo(a) ?? DateTime(1900)));
   }
 
-  Set<int> get _ids => {for (final p in projetos) if (p.id != null) p.id!};
+  Set<int> get _ids => _cacheIds ??= {for (final p in projetos) if (p.id != null) p.id!};
 
   List<Teste> get testes {
     final ids = _ids;
@@ -340,7 +378,15 @@ class DadosRelatorioProvider extends ChangeNotifier {
   List<ItemGrafico> linhaDoTempo(Iterable<DateTime?> datas) {
     final lista = datas.whereType<DateTime>().toList();
     var (inicio, fim) = filtros.intervalo;
-    fim ??= DateTime.now();
+    if (fim == null) {
+      // Sem fim (período "Tudo"): vai até hoje ou até a maior data, o que
+      // vier depois — senão projetos com início futuro sumiam do gráfico.
+      var maior = DateTime.now();
+      for (final d in lista) {
+        if (d.isAfter(maior)) maior = d;
+      }
+      fim = maior;
+    }
     if (inicio == null) {
       if (lista.isEmpty) return [];
       inicio = lista.reduce((a, b) => a.isBefore(b) ? a : b);
