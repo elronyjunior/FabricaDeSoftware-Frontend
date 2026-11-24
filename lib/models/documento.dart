@@ -1,3 +1,6 @@
+// O back-end manda ids bigint como texto ("12"): aceita os dois.
+int? _int(dynamic v) => v == null ? null : (v is int ? v : int.tryParse(v.toString()));
+
 class Documento {
   final int? id;
   final String? tipo;
@@ -9,6 +12,10 @@ class Documento {
   final int projetoId;
   final int? aprovadoPorId;
 
+  /// Documento com conteúdo salvo no banco: abre no editor do app (os
+  /// antigos abrem o Google Docs).
+  final bool temConteudoEditavel;
+
   Documento({
     this.id,
     this.tipo,
@@ -19,23 +26,25 @@ class Documento {
     this.dataAprovacao,
     required this.projetoId,
     this.aprovadoPorId,
+    this.temConteudoEditavel = false,
   });
 
   factory Documento.fromJson(Map<String, dynamic> json) {
     return Documento(
-      id: json['id'],
+      id: _int(json['id']),
       tipo: json['tipo'],
       descricao: json['descricao'],
-      arquivoUrl: json['arquivo_url'],
-      nomeDoArquivo: json['nome_do_arquivo'],
+      arquivoUrl: json['arquivo_url'] ?? '',
+      nomeDoArquivo: json['nome_do_arquivo'] ?? 'Documento',
       dataCriacao: json['data_criacao'] != null 
           ? DateTime.parse(json['data_criacao']) 
           : null,
       dataAprovacao: json['data_aprovacao'] != null 
           ? DateTime.parse(json['data_aprovacao']) 
           : null,
-      projetoId: json['projeto_id'],
-      aprovadoPorId: json['aprovado_por_id'],
+      projetoId: _int(json['projeto_id']) ?? 0,
+      aprovadoPorId: _int(json['aprovado_por_id']),
+      temConteudoEditavel: json['tem_conteudo_editavel'] == true,
     );
   }
 

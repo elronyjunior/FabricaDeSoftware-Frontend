@@ -21,7 +21,7 @@ class _ClientesState extends State<Clientes> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ClientesProvider>().carregarClientes();
-      // A coluna "Projeto(s)" conta os projetos de cada cliente.
+      // A coluna "Projetos" conta os projetos de cada cliente.
       final projetos = context.read<ProjetosProvider>();
       if (!projetos.projetosCarregados) projetos.carregarProjetos();
     });
@@ -70,7 +70,7 @@ class _ClientesState extends State<Clientes> {
             ColunaGestao('CNPJ', flex: 3),
             ColunaGestao('Setor', flex: 2, alinhamento: Alignment.center),
             ColunaGestao('Contato', flex: 4),
-            ColunaGestao('Projeto', flex: 2, alinhamento: Alignment.center),
+            ColunaGestao('Projetos', flex: 2, alinhamento: Alignment.center),
             ColunaGestao('Ações', flex: 2, alinhamento: Alignment.center),
           ],
           celulas: (c) {
@@ -82,7 +82,7 @@ class _ClientesState extends State<Clientes> {
                   ? const TextoCelula('—', secundario: true)
                   : EtiquetaGestao(c.setor!.trim()),
               TextoCelula(c.email),
-              TextoCelula(n == 1 ? '1 Projeto' : '$n Projetos',
+              TextoCelula(n == 1 ? '1 projeto' : '$n projetos',
                   secundario: n == 0),
             ];
           },

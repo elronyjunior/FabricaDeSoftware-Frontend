@@ -293,6 +293,7 @@ class _LevantamentoRequisitosContentState
       // Chama o ApiService que conecta no seu Node.js
       List<dynamic> resultados = await ApiService.gerarRequisitosBackend(
           _escopoController.text, nomeProjeto);
+      if (!mounted) return; // a etapa pode ter sido fechada durante a espera
 
       setState(() {
         for (var item in resultados) {
@@ -311,7 +312,7 @@ class _LevantamentoRequisitosContentState
     } catch (e) {
       if (mounted) avisar(context, mensagemErroIa(e));
     } finally {
-      setState(() => _isLoadingAI = false);
+      if (mounted) setState(() => _isLoadingAI = false);
     }
   }
 
@@ -349,6 +350,7 @@ class _LevantamentoRequisitosContentState
       final novaLista = _reconciliarRequisitos(
           resultado['requisitos'] as List<dynamic>? ?? []);
       final respostaChat = resultado['resposta_chat'] as String?;
+      if (!mounted) return; // a etapa pode ter sido fechada durante a espera
 
       setState(() {
         _chatSessionId = resultado['sessionId'] as String? ?? _chatSessionId;
@@ -361,6 +363,7 @@ class _LevantamentoRequisitosContentState
         }
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _mensagensChat
           .add(ChatMensagem(texto: mensagemErroIa(e), deUsuario: false)));
     } finally {

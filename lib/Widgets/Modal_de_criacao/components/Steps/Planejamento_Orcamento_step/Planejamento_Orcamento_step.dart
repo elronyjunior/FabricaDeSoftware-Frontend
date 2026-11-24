@@ -156,22 +156,47 @@ class _PlanejamentoContentState extends State<_PlanejamentoContent> {
       };
 
       final resultado = await ApiService.estimarOrcamentoBackend(dadosParaIA);
+      if (!mounted) return;
 
+      final bruto = resultado['orcamento_estimado'];
+      var valor = bruto is num
+          ? bruto.toDouble()
+          : double.tryParse(bruto.toString()) ?? 0.0;
+      // O campo aceita no máximo 99.999.999.999,99 (FormatoMoedaBr); um valor
+      // maior da IA quebraria a máscara, então fica no teto e avisa.
+      final passouDoTeto = valor > _orcamentoMaximo;
+      valor = valor.clamp(0.0, _orcamentoMaximo).toDouble();
       setState(() {
-        final bruto = resultado['orcamento_estimado'];
-        double valor = bruto is num
-            ? bruto.toDouble()
-            : double.tryParse(bruto.toString()) ?? 0.0;
-        String complexidade = resultado['complexidade'] ?? 'media';
         _orcamentoCtrl.text = formatarMoedaBr(valor);
         projetoDraft.orcamentoEstimado = valor;
-        projetoDraft.complexidade = complexidade;
+        projetoDraft.complexidade =
+            _normalizarComplexidade(resultado['complexidade']);
       });
+      if (passouDoTeto) {
+        avisar(
+            context,
+            'A IA sugeriu um valor acima do limite do campo; usamos o máximo '
+            '(R\$ ${formatarMoedaBr(_orcamentoMaximo)}).',
+            tipo: TipoAviso.info);
+      }
     } catch (e) {
       if (mounted) avisar(context, mensagemErroIa(e));
     } finally {
-      setState(() => _isCalculatingIA = false);
+      if (mounted) setState(() => _isCalculatingIA = false);
     }
+  }
+
+  /// Teto da máscara de moeda (13 dígitos com centavos).
+  static const _orcamentoMaximo = 99999999999.99;
+
+  /// O banco só aceita baixa|media|alta; a IA pode mandar "Média", "Alta"
+  /// ou texto livre. Normaliza (minúsculas, sem acento); inválido -> null.
+  static String? _normalizarComplexidade(Object? bruto) {
+    if (bruto == null) return null;
+    const semAcento = {'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'é': 'e', 'ê': 'e'};
+    var texto = bruto.toString().trim().toLowerCase();
+    semAcento.forEach((de, para) => texto = texto.replaceAll(de, para));
+    return const {'baixa', 'media', 'alta'}.contains(texto) ? texto : null;
   }
 
   /// Envia o projeto e devolve `true` quando ele foi criado. Fechar o modal

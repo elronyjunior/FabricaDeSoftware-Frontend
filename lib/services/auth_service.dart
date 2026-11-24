@@ -206,6 +206,39 @@ class AuthService {
   }
   // --- FIM DO MÉTODO NOVO ---
 
+  /// Confere se [senha] é a senha atual de [email], sem mexer na sessão
+  /// (usa a rota de login só para validar; o token devolvido é descartado).
+  /// Devolve false quando a senha não confere.
+  Future<bool> conferirSenha(String email, String senha) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/auth/login'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'email': email, 'senha': senha}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      throw ApiException('Não foi possível falar com o servidor.');
+    }
+  }
+
+  /// Guarda o nome e o e-mail novos depois que o próprio usuário edita o
+  /// perfil (o menu lateral e o perfil leem daqui).
+  Future<void> atualizarDadosLocais({String? nome, String? email}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (nome != null) {
+      _cachedUserName = nome;
+      await prefs.setString(_userNameKey, nome);
+    }
+    if (email != null) {
+      _cachedUserEmail = email;
+      await prefs.setString(_userEmailKey, email);
+    }
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -242,12 +275,13 @@ class AuthService {
       if (difference.inMinutes < 30) {
         return _cachedToken;
       }
-      try {
-        await refreshToken();
-        return _cachedToken;
-      } catch (e) {
-        return null;
-      }
+      // O /auth/refresh do back está falhando: se não renovar, segue com o
+      // token atual e só tenta de novo daqui a 30 min (antes tentava a cada
+      // requisição). Se o token já venceu, o servidor responde 401/403 e a
+      // sessão expirada é tratada no BaseApiService.
+      final renovou = await refreshToken();
+      if (!renovou) _lastTokenRefresh = DateTime.now();
+      return _cachedToken;
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -306,17 +340,22 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
+        final novo = json is Map ? json['token'] : null;
+        if (novo is! String || novo.isEmpty) return false;
         final prefs = await SharedPreferences.getInstance();
 
-        _cachedToken = json['token'];
+        _cachedToken = novo;
         _lastTokenRefresh = DateTime.now();
 
-        await prefs.setString(_tokenKey, _cachedToken!);
+        await prefs.setString(_tokenKey, novo);
         return true;
       }
       return false;
     } catch (e) {
-      throw ApiException('Erro ao renovar token: ${e.toString()}');
+      // Falha de rede ou resposta estranha: não renovou (quem chama decide
+      // seguir com o token atual), sem derrubar a requisição.
+      debugPrint('Erro ao renovar token: $e');
+      return false;
     }
   }
 }

@@ -40,8 +40,30 @@ class _TesteModalState extends State<TesteModal> {
     _nomeController = TextEditingController(text: widget.testeExistente?.nome ?? '');
     _descricaoController = TextEditingController(text: widget.testeExistente?.descricao ?? '');
     if (widget.testeExistente != null) {
-      _situacao = widget.testeExistente!.situacao;
+      _situacao = _normalizarSituacao(widget.testeExistente!.situacao);
     }
+  }
+
+  // Uma situação do banco fora das chaves (ex.: "Concluído", "em progresso")
+  // deixava o dropdown sem item selecionado. Primeiro tenta casar com uma
+  // chave conhecida; se não der, mantém o valor e o inclui como opção, para
+  // não trocar a situação do teste sem o usuário pedir.
+  String _normalizarSituacao(String bruto) {
+    final valor = bruto.trim();
+    if (valor.isEmpty) return 'pendente';
+    if (_situacaoLabels.containsKey(valor)) return valor;
+    final chave = valor
+        .toLowerCase()
+        .replaceAll(RegExp(r'[\s-]+'), '_')
+        .replaceAll('í', 'i')
+        .replaceAll('ç', 'c')
+        .replaceAll('ã', 'a');
+    if (_situacaoLabels.containsKey(chave)) return chave;
+    for (final e in _situacaoLabels.entries) {
+      if (e.value.toLowerCase() == valor.toLowerCase()) return e.key;
+    }
+    _situacaoLabels[valor] = valor;
+    return valor;
   }
 
   @override

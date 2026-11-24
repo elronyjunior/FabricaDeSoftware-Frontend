@@ -3,7 +3,7 @@ import 'package:fabrica_software_app/Widgets/Gestao/pagina_gestao.dart';
 import 'package:fabrica_software_app/models/usuario.dart';
 import 'package:fabrica_software_app/providers/usuarios_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
-import 'package:fabrica_software_app/screens/Usuarios/components/Usuario_modal.dart';
+import 'package:fabrica_software_app/screens/Usuarios/components/usuario_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

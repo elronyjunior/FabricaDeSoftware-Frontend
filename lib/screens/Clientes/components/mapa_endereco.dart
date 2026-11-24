@@ -91,7 +91,8 @@ class EnderecoDoMapa {
       numero: primeiro(['house_number']),
       bairro: primeiro(['suburb', 'neighbourhood', 'quarter', 'city_district']),
       cidade: primeiro(['city', 'town', 'village', 'municipality']),
-      uf: uf ?? primeiro(['state']),
+      // Sem o ISO, o Nominatim manda o nome ("São Paulo"): vira a sigla.
+      uf: siglaUf(uf ?? primeiro(['state'])),
       pais: primeiro(['country']),
     );
   }
@@ -125,6 +126,10 @@ class _MapaEnderecoState extends State<MapaEndereco> {
   final _busca = TextEditingController();
   LatLng? _ponto;
   bool _buscando = false;
+
+  /// Conta as buscas/cliques: com cliques rápidos, a resposta de uma busca
+  /// antiga pode chegar depois da nova; só a mais recente é usada.
+  int _requisicao = 0;
   String? _erro;
 
   @override
@@ -294,6 +299,8 @@ class _MapaEnderecoState extends State<MapaEndereco> {
   Future<void> _buscar(String texto, {bool preencher = true}) async {
     final termo = texto.trim();
     if (termo.isEmpty) return;
+    final minha = ++_requisicao;
+    bool vale() => mounted && minha == _requisicao; // ainda é a mais recente?
     setState(() {
       _buscando = true;
       _erro = null;
@@ -303,7 +310,7 @@ class _MapaEnderecoState extends State<MapaEndereco> {
       if (_soDigitos(termo).length == 8 &&
           RegExp(r'^[\d\s.-]+$').hasMatch(termo)) {
         final cep = await _viaCep(termo);
-        if (!mounted) return;
+        if (!vale()) return;
         if (cep == null) {
           setState(() => _erro = 'CEP $termo não encontrado.');
           return;
@@ -316,13 +323,13 @@ class _MapaEnderecoState extends State<MapaEndereco> {
           'country': 'Brasil',
           'limit': '1',
         }) as List;
-        if (mounted && lista.isNotEmpty) _moverPara(lista.first as Map);
+        if (vale() && lista.isNotEmpty) _moverPara(lista.first as Map);
         return;
       }
 
       final lista = await _get('search',
           {'q': termo, 'countrycodes': 'br', 'limit': '1'}) as List;
-      if (!mounted) return;
+      if (!vale()) return;
       if (lista.isEmpty) {
         setState(() => _erro = 'Nenhum lugar encontrado para "$termo".');
         return;
@@ -332,17 +339,23 @@ class _MapaEnderecoState extends State<MapaEndereco> {
       if (!preencher) return;
       final endereco = await _conferir(EnderecoDoMapa.doNominatim(item),
           numero: _numeroDigitado(termo));
-      if (mounted) widget.aoEscolher(endereco);
-    } catch (e) {
-      if (mounted) setState(() => _erro = 'Não foi possível buscar: $e');
+      if (vale()) widget.aoEscolher(endereco);
+    } catch (_) {
+      // Mensagem amigável no lugar do texto técnico da exceção.
+      if (vale()) {
+        setState(() => _erro =
+            'Não foi possível buscar no mapa agora. Tente novamente.');
+      }
     } finally {
-      if (mounted) setState(() => _buscando = false);
+      if (vale()) setState(() => _buscando = false);
     }
   }
 
   /// Clique no mapa: marca o ponto e traduz em endereço.
   Future<void> _marcar(LatLng ponto) async {
     if (widget.somenteLeitura) return;
+    final minha = ++_requisicao;
+    bool vale() => mounted && minha == _requisicao; // ainda é o mais recente?
     setState(() {
       _ponto = ponto;
       _buscando = true;
@@ -354,20 +367,22 @@ class _MapaEnderecoState extends State<MapaEndereco> {
         'lon': ponto.longitude.toString(),
         'zoom': '18',
       }) as Map;
-      if (!mounted) return;
+      if (!vale()) return;
       if (json['error'] != null) {
         setState(() => _erro = 'Nenhum endereço encontrado nesse ponto.');
         return;
       }
       final endereco =
           await _conferir(EnderecoDoMapa.doNominatim(json.cast()));
-      if (mounted) widget.aoEscolher(endereco);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _erro = 'Não foi possível ler o endereço: $e');
+      if (vale()) widget.aoEscolher(endereco);
+    } catch (_) {
+      // Mensagem amigável no lugar do texto técnico da exceção.
+      if (vale()) {
+        setState(() => _erro =
+            'Não foi possível ler o endereço desse ponto. Tente novamente.');
       }
     } finally {
-      if (mounted) setState(() => _buscando = false);
+      if (vale()) setState(() => _buscando = false);
     }
   }
 
@@ -487,4 +502,41 @@ class _Carregando extends StatelessWidget {
       ),
     );
   }
+}
+
+
+// ---------------- UF e CEP ----------------
+
+/// Siglas dos 27 estados pelo nome (sem acento, minúsculo).
+const _ufPorNome = {
+  'acre': 'AC', 'alagoas': 'AL', 'amapa': 'AP', 'amazonas': 'AM',
+  'bahia': 'BA', 'ceara': 'CE', 'distrito federal': 'DF',
+  'espirito santo': 'ES', 'goias': 'GO', 'maranhao': 'MA',
+  'mato grosso': 'MT', 'mato grosso do sul': 'MS', 'minas gerais': 'MG',
+  'para': 'PA', 'paraiba': 'PB', 'parana': 'PR', 'pernambuco': 'PE',
+  'piaui': 'PI', 'rio de janeiro': 'RJ', 'rio grande do norte': 'RN',
+  'rio grande do sul': 'RS', 'rondonia': 'RO', 'roraima': 'RR',
+  'santa catarina': 'SC', 'sao paulo': 'SP', 'sergipe': 'SE',
+  'tocantins': 'TO',
+};
+
+/// Siglas válidas de UF.
+final Set<String> siglasUf = _ufPorNome.values.toSet();
+
+/// "São Paulo" ou "sp" -> "SP". O que não reconhece volta como veio.
+String? siglaUf(String? valor) {
+  final t = valor?.trim();
+  if (t == null || t.isEmpty) return null;
+  if (t.length == 2) return t.toUpperCase();
+  final chave = _MapaEnderecoState._semAcento(t)
+      .replaceFirst(RegExp(r'^estado d[eoa]s?\s+'), '')
+      .trim();
+  return _ufPorNome[chave] ?? t;
+}
+
+/// "01310100" ou "01310-100" -> "01310-100" (fora de 8 dígitos, fica igual).
+String formatarCep(String valor) {
+  final d = valor.replaceAll(RegExp(r'\D'), '');
+  if (d.length != 8) return valor.trim();
+  return '${d.substring(0, 5)}-${d.substring(5)}';
 }

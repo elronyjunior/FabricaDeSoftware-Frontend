@@ -265,9 +265,11 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
         projetoDraft.escopo,
         projetoDraft.requisitos,
       );
+      if (!mounted) return; // a etapa pode ter sido fechada durante a espera
 
       _aplicarResultado(resultado);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _erro = mensagemErroIa(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -288,8 +290,10 @@ class _DiagramaCasoUsoContentState extends State<_DiagramaCasoUsoContent> {
     try {
       final resultado =
           await ApiService.refinarDiagramaCasoUso(_sessionId!, mensagem);
+      if (!mounted) return; // a etapa pode ter sido fechada durante a espera
       _aplicarResultado(resultado);
     } catch (e) {
+      if (!mounted) return;
       setState(() => _mensagensChat
           .add(ChatMensagem(texto: mensagemErroIa(e), deUsuario: false)));
     } finally {

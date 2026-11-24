@@ -98,7 +98,7 @@ class _AlocacaoContentState extends State<_AlocacaoContent> {
   Future<void> _fetchData() async {
     try {
       final results = await Future.wait(
-          [ApiService.getContribuidores(), ApiService.getRecursos()]);
+          [ApiService.getUsuarios(), ApiService.getRecursos()]);
       if (mounted) {
         setState(() {
           _listaContribuidoresDB = results[0];
@@ -127,13 +127,24 @@ class _AlocacaoContentState extends State<_AlocacaoContent> {
       if (indice >= 0) {
         projetoDraft.equipe.removeAt(indice);
       } else {
+        // A pessoa é um usuário; ao criar o projeto ela vira o contribuidor
+        // de mesmo e-mail (ApiService._contribuidorDoMembro).
         projetoDraft.equipe.add({
           'id': pessoa['id'],
           'nome': pessoa['nome'],
-          'papel': pessoa['cargo'] ?? 'N/A'
+          'email': pessoa['email'],
+          'papel': _rotuloNivel(pessoa['nivel']),
         });
       }
     });
+  }
+
+  /// "ADMINISTRADOR" -> "Administrador" (nível do usuário como papel).
+  static String _rotuloNivel(dynamic nivel) {
+    final n = (nivel ?? '').toString().trim();
+    if (n.isEmpty) return 'Usuário';
+    if (n.toUpperCase() == 'USUARIO') return 'Usuário';
+    return n[0].toUpperCase() + n.substring(1).toLowerCase();
   }
 
   void _alternarRecurso(dynamic recurso) {
@@ -182,10 +193,10 @@ class _AlocacaoContentState extends State<_AlocacaoContent> {
         BuscaSelecaoIdv(
           itens: _listaContribuidoresDB,
           rotulo: (c) => '${c['nome'] ?? ''}',
-          detalhe: (c) => c['cargo'] as String?,
+          detalhe: (c) => _rotuloNivel(c['nivel']),
           comAvatar: true,
-          hintBusca: 'Pesquisar pessoa ou cargo',
-          textoVazio: 'Nenhum colaborador cadastrado.',
+          hintBusca: 'Pesquisar pessoa',
+          textoVazio: 'Nenhum usuário cadastrado em Gestão de usuários.',
           textoNenhumSelecionado: 'Ninguém na equipe ainda.',
           marcado: (c) => projetoDraft.equipe.any((e) => e['id'] == c['id']),
           aoAlternar: _alternarPessoa,
