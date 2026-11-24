@@ -1,7 +1,3 @@
-// ignore: unused_import
-import 'package:fabrica_software_app/models/recurso.dart';
-import 'package:fabrica_software_app/models/teste.dart';
-import 'package:fabrica_software_app/models/usuario.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/providers/recursos_provider.dart';
 import 'package:fabrica_software_app/providers/tecnologias_provider.dart';
@@ -14,15 +10,13 @@ import 'package:fabrica_software_app/screens/Recursos/Recursos.dart';
 import 'package:fabrica_software_app/screens/Relatorio/Relatorio_Screen.dart';
 import 'package:fabrica_software_app/screens/Tecnologias/Tecnologias.dart';
 import 'package:fabrica_software_app/screens/Usuarios/usuarios.dart';
-// ignore: unused_import
-import 'package:fabrica_software_app/services/requisito_service.dart';
+import 'package:fabrica_software_app/services/base_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/usuarios_provider.dart';
 import 'providers/projetos_provider.dart';
 import 'providers/clientes_provider.dart';
 import 'providers/auth_provider.dart';
-import 'screens/Api_teste/api_test_screen.dart';
 import 'screens/Login/login_screen.dart';
 import 'screens/Gerenciar_Projetos/Gerenciar_projetos.dart';
 
@@ -37,6 +31,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Token recusado pelo servidor: sai da conta e volta ao login.
+  BaseApiService.aoSessaoExpirada = tratarSessaoExpirada;
 
   // Seu código original
   runApp(
@@ -65,19 +62,15 @@ class MyApp extends StatelessWidget {
         // Menu lateral em todas as telas, exceto login e cadastro.
         builder: (context, child) => LayoutPrincipal(child: child),
         initialRoute: '/',
-        routes: {
-          '/':(context){return const Loginscreen();},
-          '/Cadastro':(context){return const CadastroScreen();},
-          RotasApp.recuperarSenha: (context) => const RecuperarSenhaScreen(),
-          '/ApiTest':(context){return const ApiTestScreen();},
-          '/Gerenciar_Projetos':(context){return const GerenciarProjetos();},
-          '/Account':(context){return const Account();},
-          '/Clientes':(context){return const Clientes();},
-          '/Recursos':(context){return const Recursos();},
-          '/Tecnologias':(context){return const Tecnologias();},
-          '/Usuarios':(context){return const Usuarios();},
-          '/Equipes':(context){return const GerenciarEquipesScreen();},
-          '/Relatorios':(context){return const RelatoriosScreen();}
+        // onGenerateRoute em vez de routes: toda tela passa pela guarda
+        // de login/nível (GuardaRota).
+        onGenerateRoute: (settings) {
+          final tela = _telas[settings.name];
+          if (tela == null) return null;
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => GuardaRota(rota: settings.name!, tela: tela),
+          );
         },
         title: 'Fábrica de Software',
         theme: ThemeData(
@@ -94,6 +87,63 @@ class MyApp extends StatelessWidget {
           }),
         ),
       );
+  }
+}
+
+/// Telas do app por rota.
+final Map<String, WidgetBuilder> _telas = {
+  RotasApp.login: (_) => const Loginscreen(),
+  RotasApp.cadastro: (_) => const CadastroScreen(),
+  RotasApp.recuperarSenha: (_) => const RecuperarSenhaScreen(),
+  RotasApp.projetos: (_) => const GerenciarProjetos(),
+  RotasApp.perfil: (_) => const Account(),
+  RotasApp.clientes: (_) => const Clientes(),
+  RotasApp.recursos: (_) => const Recursos(),
+  RotasApp.tecnologias: (_) => const Tecnologias(),
+  RotasApp.usuarios: (_) => const Usuarios(),
+  RotasApp.equipes: (_) => const GerenciarEquipesScreen(),
+  RotasApp.relatorios: (_) => const RelatoriosScreen(),
+};
+
+/// Guarda de rota: sem login, só login/cadastro/recuperar senha; logado,
+/// o login vai para Projetos; Gestão de usuários só para ADMINISTRADOR e
+/// MASTER. Enquanto o AuthProvider lê a sessão, mostra um indicador.
+class GuardaRota extends StatelessWidget {
+  const GuardaRota({super.key, required this.rota, required this.tela});
+
+  final String rota;
+  final WidgetBuilder tela;
+
+  /// Para onde mandar, ou null quando pode ficar em [rota].
+  static String? destino(String rota, bool logado, String? nivel) {
+    final publica = RotasApp.semMenu.contains(rota);
+    if (!logado) return publica ? null : RotasApp.login;
+    if (rota == RotasApp.login) return RotasApp.projetos;
+    if (!RotasApp.permitida(rota, nivel)) return RotasApp.projetos;
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // select: só reconstrói quando o login ou o nível mudam.
+    final (logado, nivel) = context.select<AuthProvider, (bool?, String?)>(
+        (a) => (a.isAuthenticated, a.userNivel));
+    const carregando = Center(child: CircularProgressIndicator());
+    if (logado == null) return carregando;
+
+    final ir = destino(rota, logado, nivel);
+    if (ir == null) return tela(context);
+
+    // Navega depois do frame (não dá para navegar no meio do build). Se a
+    // tela já saiu (ex.: o login já abriu Projetos), não faz nada.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      if (ModalRoute.of(context)?.isCurrent != true) return;
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(ir, (_) => false);
+    });
+    // Tela pública (login) pode aparecer durante a troca; tela protegida
+    // nunca é montada sem permissão.
+    return RotasApp.semMenu.contains(rota) ? tela(context) : carregando;
   }
 }
 

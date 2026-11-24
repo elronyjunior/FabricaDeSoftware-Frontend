@@ -36,6 +36,14 @@ class RotasApp {
 
   /// Telas que não exibem o menu lateral.
   static const semMenu = {login, cadastro, recuperarSenha};
+
+  /// Níveis que podem abrir a Gestão de usuários (USUARIO não pode).
+  static const niveisGestaoUsuarios = {'ADMINISTRADOR', 'MASTER'};
+
+  /// `false` quando o nível do usuário não pode abrir [rota].
+  static bool permitida(String? rota, String? nivel) =>
+      rota != usuarios ||
+      niveisGestaoUsuarios.contains((nivel ?? '').trim().toUpperCase());
 }
 
 /// Chave do Navigator principal: permite navegar a partir do menu,
@@ -143,6 +151,26 @@ Future<void> sairDaConta(BuildContext context) async {
       ?.pushNamedAndRemoveUntil(RotasApp.login, (_) => false);
 }
 
+/// Evita sair várias vezes quando várias requisições voltam 403 juntas.
+bool _saindoPorSessaoExpirada = false;
+
+/// Ligado em `BaseApiService.aoSessaoExpirada` (main.dart): o token venceu,
+/// então sai da conta e volta ao login com um aviso.
+Future<void> tratarSessaoExpirada() async {
+  if (_saindoPorSessaoExpirada) return;
+  // Já no login/cadastro: nada a fazer (respostas atrasadas da tela antiga).
+  if (RotasApp.semMenu.contains(observadorRotas.rotaAtual)) return;
+  final context = navigatorKey.currentContext;
+  if (context == null) return;
+  _saindoPorSessaoExpirada = true;
+  try {
+    avisarApp('Sua sessão expirou. Entre de novo.', tipo: TipoAviso.info);
+    await sairDaConta(context);
+  } finally {
+    _saindoPorSessaoExpirada = false;
+  }
+}
+
 /// O menu lateral já ligado às rotas do app.
 class MenuLateral extends StatelessWidget {
   const MenuLateral({super.key, this.sempreAberta = false, this.aoNavegar});
@@ -154,10 +182,17 @@ class MenuLateral extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Esconde do menu as telas que o nível do usuário não pode abrir.
+    final nivel = context.select<AuthProvider, String?>((a) => a.userNivel);
+    final ocultos = {
+      for (var i = 0; i < RotasApp.menu.length; i++)
+        if (!RotasApp.permitida(RotasApp.menu[i], nivel)) i,
+    };
     return ListenableBuilder(
       listenable: observadorRotas,
       builder: (context, _) => SidebarFlutuante(
         sempreAberta: sempreAberta,
+        ocultos: ocultos,
         indiceAtivo: observadorRotas.indiceAtivo,
         onSelecionar: (i) {
           aoNavegar?.call();

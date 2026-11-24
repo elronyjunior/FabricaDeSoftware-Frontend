@@ -4,6 +4,8 @@ import 'dart:ui';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:fabrica_software_app/providers/auth_provider.dart';
 import 'package:fabrica_software_app/services/auth_service.dart';
+import 'package:fabrica_software_app/screens/Usuarios/components/usuario_modal.dart'
+    show niveisUsuario;
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,6 +22,7 @@ class SidebarFlutuante extends StatefulWidget {
     this.onPerfil,
     this.onSair,
     this.sempreAberta = false,
+    this.ocultos = const {},
   });
 
   final int indiceAtivo;
@@ -30,6 +33,10 @@ class SidebarFlutuante extends StatefulWidget {
 
   /// Use `true` quando o menu estiver dentro de um Drawer (celular).
   final bool sempreAberta;
+
+  /// Índices de [itens] que não aparecem (ex.: Gestão de usuários para
+  /// quem tem nível USUARIO).
+  final Set<int> ocultos;
 
   static const itens = [
     (icone: Icons.account_tree, rotulo: 'Projetos'),
@@ -73,6 +80,10 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
   /// Foto do usuário logado (null = mostra a inicial).
   ImageProvider? _fotoAtual;
   String _nivel = '';
+
+  /// Nível mostrado no rodapé: o do AuthProvider ou, enquanto ele não
+  /// carrega, o guardado no login.
+  String _nivelAtual = '';
 
   @override
   void initState() {
@@ -124,6 +135,9 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
     _nomeAtual =
         (context.select<AuthProvider, String?>((a) => a.nome) ?? _nome).trim();
     _fotoAtual = context.select<AuthProvider, ImageProvider?>((a) => a.foto.imagem);
+    _nivelAtual =
+        (context.select<AuthProvider, String?>((a) => a.userNivel) ?? _nivel)
+            .trim();
     return MouseRegion(
       onEnter: (_) => _abrir(),
       onExit: (_) => _fechar(),
@@ -201,7 +215,13 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
                       // laranja), então não tem toque nem destaque.
                     ),
                     const SizedBox(height: 31),
-                    for (var i = 0; i < SidebarFlutuante.itens.length; i++) ...[
+                    // Índices originais (o onSelecionar usa a posição em
+                    // RotasApp.menu), pulando os ocultos.
+                    for (final (n, i) in [
+                      for (var i = 0; i < SidebarFlutuante.itens.length; i++)
+                        if (!widget.ocultos.contains(i)) i
+                    ].indexed) ...[
+                      if (n > 0) const SizedBox(height: 17),
                       _Item(
                         t: t,
                         icone: SidebarFlutuante.itens[i].icone,
@@ -209,8 +229,6 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
                         ativo: i == widget.indiceAtivo,
                         onTap: () => _executar(() => widget.onSelecionar(i)),
                       ),
-                      if (i < SidebarFlutuante.itens.length - 1)
-                        const SizedBox(height: 17),
                     ],
                     const Spacer(),
                     // Rodapé: usuário logado, tema e sair numa linha só.
@@ -226,7 +244,7 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
                       t: t,
                       nome: _nomeAtual,
                       foto: _fotoAtual,
-                      nivel: _nivel,
+                      nivel: _nivelAtual,
                       onPerfil: () => _executar(widget.onPerfil),
                       onTema: () => _executar(widget.onAlternarTema),
                       onSair: () => _executar(widget.onSair),
@@ -378,10 +396,12 @@ class _RodapeUsuario extends StatelessWidget {
 
   String get _inicial => nome.isEmpty ? '?' : nome[0].toUpperCase();
 
-  /// "admin" -> "Admin", "ADMINISTRADOR" -> "Administrador".
+  /// Nome do nível com acento (USUARIO -> "Usuário"), o mesmo da Gestão de
+  /// usuários; nível fora da lista só ganha a inicial maiúscula.
   String get _perfil => nivel.isEmpty
       ? 'Usuário'
-      : nivel[0].toUpperCase() + nivel.substring(1).toLowerCase();
+      : niveisUsuario[nivel.toUpperCase()] ??
+          nivel[0].toUpperCase() + nivel.substring(1).toLowerCase();
 
   @override
   Widget build(BuildContext context) {
