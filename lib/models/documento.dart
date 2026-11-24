@@ -12,6 +12,10 @@ class Documento {
   final int projetoId;
   final int? aprovadoPorId;
 
+  /// Documento com conteúdo salvo no banco: abre no editor do app (os
+  /// antigos abrem o Google Docs).
+  final bool temConteudoEditavel;
+
   Documento({
     this.id,
     this.tipo,
@@ -22,6 +26,7 @@ class Documento {
     this.dataAprovacao,
     required this.projetoId,
     this.aprovadoPorId,
+    this.temConteudoEditavel = false,
   });
 
   factory Documento.fromJson(Map<String, dynamic> json) {
@@ -29,8 +34,8 @@ class Documento {
       id: _int(json['id']),
       tipo: json['tipo'],
       descricao: json['descricao'],
-      arquivoUrl: json['arquivo_url'],
-      nomeDoArquivo: json['nome_do_arquivo'],
+      arquivoUrl: json['arquivo_url'] ?? '',
+      nomeDoArquivo: json['nome_do_arquivo'] ?? 'Documento',
       dataCriacao: json['data_criacao'] != null 
           ? DateTime.parse(json['data_criacao']) 
           : null,
@@ -39,6 +44,7 @@ class Documento {
           : null,
       projetoId: _int(json['projeto_id']) ?? 0,
       aprovadoPorId: _int(json['aprovado_por_id']),
+      temConteudoEditavel: json['tem_conteudo_editavel'] == true,
     );
   }
 

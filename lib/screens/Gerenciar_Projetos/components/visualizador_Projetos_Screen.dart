@@ -11,7 +11,7 @@ import 'package:fabrica_software_app/models/teste.dart';
 import 'package:fabrica_software_app/models/treinamento.dart';
 import 'package:fabrica_software_app/providers/projetos_provider.dart';
 import 'package:fabrica_software_app/screens/Documento/Criar_Doc_Modal.dart';
-import 'package:fabrica_software_app/screens/Documento/Documentos_Projeto_Screen.dart';
+import 'package:fabrica_software_app/screens/Documento/Visualizar_Documento_Screen.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/components/escala_design.dart';
 import 'package:fabrica_software_app/screens/Recursos/recursos_do_projeto.dart';
@@ -25,6 +25,8 @@ import 'package:fabrica_software_app/services/recursos_service.dart';
 import 'package:fabrica_software_app/services/teste_service.dart';
 import 'package:fabrica_software_app/services/treinamento_service.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 
 // =====================================================================
@@ -241,29 +243,30 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
     if (mounted) _carregar();
   }
 
-  /// Botão de criar + ícone para a página completa (editar, excluir,
-  /// presença, abrir o documento).
-  Widget _acoes({
-    required String rotulo,
-    required VoidCallback aoCriar,
-    required String dicaPagina,
-    required Widget pagina,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: dicaPagina,
-          onPressed: () => _abrirPagina(pagina),
-          icon: const Icon(Icons.open_in_new_rounded,
-              size: 20, color: StyleProjetos.textoSecundario),
-        ),
-        const SizedBox(width: 6),
-        BotaoSecundarioIdv(
-            rotulo: rotulo, icone: Icons.add_rounded, aoTocar: aoCriar),
-      ],
-    );
+  /// Abre o documento: no editor do app (com conteúdo salvo) ou o arquivo
+  /// do Google Docs (documentos antigos).
+  Future<void> _abrirDocumento(Documento d) async {
+    if (d.temConteudoEditavel && d.id != null) {
+      await _abrirPagina(VisualizarDocumentoScreen(
+        documentoId: d.id!,
+        nomeArquivo: d.nomeDoArquivo,
+        arquivoUrl: d.arquivoUrl,
+      ));
+      return;
+    }
+    final uri = Uri.tryParse(d.arquivoUrl);
+    final abriu = uri != null &&
+        d.arquivoUrl.isNotEmpty &&
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!abriu) avisarApp('Não foi possível abrir o documento.');
   }
+
+  Future<void> _excluirDocumento(Documento d) => _confirmarExclusao(
+        titulo: 'Excluir documento',
+        nome: d.nomeDoArquivo,
+        acao: () => DocumentosService.instance.excluirDocumento(d.id!),
+        sucesso: 'Documento excluído.',
+      );
 
   double get _custoRecursos =>
       _vinculos.fold(0.0, (soma, v) => soma + v.custoEstimado());
@@ -340,7 +343,7 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
 
     final indicadores = [
       IndicadorRelatorio(
-        icone: Icons.payments_outlined,
+        icone: FontAwesomeIcons.sackDollar,
         titulo: 'Orçamento estimado',
         valor: p.orcamentoEstimado == null
             ? 'Não estimado'
@@ -349,7 +352,7 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
         destaque: true,
       ),
       IndicadorRelatorio(
-        icone: Icons.inventory_2_outlined,
+        icone: FontAwesomeIcons.boxesStacked,
         titulo: 'Custo dos recursos',
         valor: dinheiroCurto(_custoRecursos),
         detalhe: _vinculos.length == 1
@@ -357,14 +360,14 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
             : '${_vinculos.length} recursos vinculados',
       ),
       IndicadorRelatorio(
-        icone: Icons.event_outlined,
+        icone: FontAwesomeIcons.hourglassHalf,
         titulo: 'Prazo',
         valor: prazo.valor,
         complemento: prazo.complemento,
         detalhe: prazo.detalhe,
       ),
       IndicadorRelatorio(
-        icone: Icons.groups_outlined,
+        icone: FontAwesomeIcons.peopleGroup,
         titulo: 'Equipe',
         valor: '${membros.length}',
         complemento: membros.length == 1 ? ' pessoa' : ' pessoas',
@@ -523,7 +526,7 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
       subtitulo: 'Custo estimado: ${moeda.format(_custoRecursos)}',
       acao: BotaoSecundarioIdv(
         rotulo: 'Gerenciar recursos',
-        icone: Icons.tune_rounded,
+        icone: FontAwesomeIcons.sliders,
         aoTocar: _gerenciarRecursos,
       ),
       child: TabelaRelatorio(
@@ -569,23 +572,23 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
 
     final indicadores = [
       IndicadorRelatorio(
-          icone: Icons.fact_check_outlined,
+          icone: FontAwesomeIcons.clipboardCheck,
           titulo: 'Testes',
           valor: '${_testes.length}',
           detalhe: 'cadastrados no projeto'),
       IndicadorRelatorio(
-          icone: Icons.check_circle_outline_rounded,
+          icone: FontAwesomeIcons.circleCheck,
           titulo: 'Concluídos',
           valor: '$concluidos',
           complemento: '/${_testes.length}',
           detalhe: 'executados com sucesso'),
       IndicadorRelatorio(
-          icone: Icons.pending_outlined,
+          icone: FontAwesomeIcons.clock,
           titulo: 'Pendentes',
           valor: '$pendentes',
           detalhe: 'aguardando execução'),
       IndicadorRelatorio(
-          icone: Icons.percent_rounded,
+          icone: FontAwesomeIcons.percent,
           titulo: 'Progresso',
           valor: '$taxa',
           complemento: '%',
@@ -595,7 +598,7 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
     final lista = CartaoRelatorio(
       titulo: 'Testes do projeto',
       acao: BotaoSecundarioIdv(
-          rotulo: 'Novo teste', icone: Icons.add_rounded, aoTocar: _novoTeste),
+          rotulo: 'Novo teste', icone: FontAwesomeIcons.plus, aoTocar: _novoTeste),
       child: TabelaRelatorio(
         colunas: const ['Teste', 'Situação', ''],
         pesos: const [6, 2, 1],
@@ -606,8 +609,8 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
               CelulaRelatorio(t.nome, abaixo: t.descricao, forte: true),
               _EtiquetaSituacao(t.situacao),
               _AcoesLinha([
-                (Icons.edit_outlined, 'Editar teste', () => _editarTeste(t), false),
-                (Icons.delete_outline_rounded, 'Excluir teste',
+                (FontAwesomeIcons.penToSquare, 'Editar teste', () => _editarTeste(t), false),
+                (FontAwesomeIcons.trashCan, 'Excluir teste',
                     () => _excluirTeste(t), true),
               ]),
             ],
@@ -633,15 +636,13 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
       subtitulo: _documentos.length == 1
           ? '1 documento'
           : '${_documentos.length} documentos',
-      acao: _acoes(
-        rotulo: 'Novo documento',
-        aoCriar: _novoDocumento,
-        dicaPagina: 'Abrir a página de documentos (ver, editar e enviar)',
-        pagina: DocumentosProjetoScreen(projeto: p),
-      ),
+      acao: BotaoSecundarioIdv(
+          rotulo: 'Novo documento',
+          icone: FontAwesomeIcons.wandMagicSparkles,
+          aoTocar: _novoDocumento),
       child: TabelaRelatorio(
-        colunas: const ['Documento', 'Tipo', 'Criado em', 'Aprovação'],
-        pesos: const [4, 2, 2, 2],
+        colunas: const ['Documento', 'Tipo', 'Criado em', 'Aprovação', ''],
+        pesos: const [4, 2, 2, 2, 1],
         vazio: 'Nenhum documento. Use "Novo documento" para gerar com a IA.',
         linhas: [
           for (final d in _documentos)
@@ -653,6 +654,12 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
               d.dataAprovacao == null
                   ? const _Etiqueta('Em revisão', aprovado: false)
                   : const _Etiqueta('Aprovado', aprovado: true),
+              _AcoesLinha([
+                (FontAwesomeIcons.solidEye, 'Abrir documento',
+                    () => _abrirDocumento(d), false),
+                (FontAwesomeIcons.trashCan, 'Excluir documento',
+                    () => _excluirDocumento(d), true),
+              ]),
             ],
         ],
       ),
@@ -671,7 +678,7 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
           ' · $horas h no total',
       acao: BotaoSecundarioIdv(
           rotulo: 'Novo treinamento',
-          icone: Icons.add_rounded,
+          icone: FontAwesomeIcons.plus,
           aoTocar: _novoTreinamento),
       child: TabelaRelatorio(
         colunas: const ['Treinamento', 'Tipo', 'Período', 'Carga', 'Instrutor', ''],
@@ -691,11 +698,11 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
               CelulaRelatorio(t.duracaoHoras == null ? '—' : '${t.duracaoHoras} h'),
               CelulaRelatorio(_ou(t.instrutor, '—')),
               _AcoesLinha([
-                (Icons.how_to_reg_outlined, 'Controle de presença',
+                (FontAwesomeIcons.userCheck, 'Controle de presença',
                     () => _presenca(t), false),
-                (Icons.edit_outlined, 'Editar treinamento',
+                (FontAwesomeIcons.penToSquare, 'Editar treinamento',
                     () => _editarTreinamento(t), false),
-                (Icons.delete_outline_rounded, 'Excluir treinamento',
+                (FontAwesomeIcons.trashCan, 'Excluir treinamento',
                     () => _excluirTreinamento(t), true),
               ]),
             ],
@@ -749,7 +756,7 @@ class _Cabecalho extends StatelessWidget {
           child: IconButton(
             tooltip: 'Voltar',
             onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(Icons.arrow_back_rounded,
+            icon: const Icon(FontAwesomeIcons.arrowLeft,
                 color: StyleProjetos.azulEscuro),
           ),
         ),
@@ -997,7 +1004,7 @@ class _AvisoFalha extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded,
+          const Icon(FontAwesomeIcons.triangleExclamation,
               size: 20, color: CoresIdv.vermelho),
           const SizedBox(width: 10),
           Expanded(
@@ -1030,9 +1037,10 @@ class _AcoesLinha extends StatelessWidget {
             tooltip: dica,
             onPressed: aoTocar,
             visualDensity: VisualDensity.compact,
-            icon: Icon(icone,
-                size: 20,
-                color: perigo ? CoresIdv.vermelho : StyleProjetos.azulEscuro),
+            // Mesmos ícones e cores das ações do card de projeto.
+            icon: FaIcon(icone,
+                size: 16,
+                color: perigo ? const Color(0xFFD62A1E) : StyleProjetos.azulEscuro),
           ),
       ],
     );
