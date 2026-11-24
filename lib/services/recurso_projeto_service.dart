@@ -60,7 +60,8 @@ class RecursoProjetoService extends BaseApiService {
   }
 
   Future<RecursoProjeto> updateRecursoProjeto(RecursoProjeto recursoProjeto) async {
-    final Uri uri = buildUri('/recurso/${recursoProjeto.recursoId}/projeto/${recursoProjeto.projetoId}');
+    // Rota do back-end: /recursos-projeto/:projetoId/:recursoId
+    final Uri uri = buildUri('/${recursoProjeto.projetoId}/${recursoProjeto.recursoId}');
     final response = await http.put(
       uri,
       headers: await getHeaders(),
@@ -76,7 +77,7 @@ class RecursoProjetoService extends BaseApiService {
   }
 
   Future<void> deleteRecursoProjeto(int recursoId, int projetoId) async {
-    final Uri uri = buildUri('/recurso/$recursoId/projeto/$projetoId');
+    final Uri uri = buildUri('/$projetoId/$recursoId');
     final response = await http.delete(
       uri,
       headers: await getHeaders(),

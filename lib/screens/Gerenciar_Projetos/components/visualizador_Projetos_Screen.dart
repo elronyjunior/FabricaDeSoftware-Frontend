@@ -1,738 +1,1048 @@
-import 'package:fabrica_software_app/models/projeto.dart';
+import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
+import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
+import 'package:fabrica_software_app/models/documento.dart';
 import 'package:fabrica_software_app/models/enums.dart';
-import 'package:fabrica_software_app/screens/Tests/Teste_screen.dart';
-import 'package:fabrica_software_app/screens/Treinamentos/ListaTreinamentosScreen.dart';
+import 'package:fabrica_software_app/models/projeto.dart';
+import 'package:fabrica_software_app/models/recurso.dart';
+import 'package:fabrica_software_app/models/recurso_projeto.dart';
+import 'package:fabrica_software_app/models/teste.dart';
+import 'package:fabrica_software_app/models/treinamento.dart';
+import 'package:fabrica_software_app/providers/projetos_provider.dart';
+import 'package:fabrica_software_app/screens/Documento/Criar_Doc_Modal.dart';
+import 'package:fabrica_software_app/screens/Documento/Visualizar_Documento_Screen.dart';
+import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
+import 'package:fabrica_software_app/screens/Gerenciar_Projetos/components/escala_design.dart';
+import 'package:fabrica_software_app/screens/Recursos/recursos_do_projeto.dart';
+import 'package:fabrica_software_app/screens/Relatorio/components/pecas_relatorio.dart';
+import 'package:fabrica_software_app/screens/Tests/Teste_modal.dart';
+import 'package:fabrica_software_app/screens/Treinamentos/ControlePresencaScreen.dart';
+import 'package:fabrica_software_app/screens/Treinamentos/ModalCriarTreinamento.dart';
+import 'package:fabrica_software_app/services/documentos_service.dart';
+import 'package:fabrica_software_app/services/recurso_projeto_service.dart';
+import 'package:fabrica_software_app/services/recursos_service.dart';
+import 'package:fabrica_software_app/services/teste_service.dart';
+import 'package:fabrica_software_app/services/treinamento_service.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:intl/intl.dart';
-import 'package:fabrica_software_app/screens/Documento/Documentos_Projeto_Screen.dart';
-// Import da tela de recursos
-import 'package:fabrica_software_app/screens/Recursos/Recursos.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 
-class VisualizarProjetoScreen extends StatelessWidget {
+// =====================================================================
+// Visualizar projeto: o mesmo modelo de Relatórios (abas sublinhadas,
+// indicadores e painéis), só com dados reais do projeto.
+// =====================================================================
+
+enum _Aba {
+  resumo('Resumo'),
+  recursos('Recursos'),
+  testes('Testes'),
+  artefatos('Artefatos'),
+  treinamentos('Treinamentos');
+
+  const _Aba(this.rotulo);
+  final String rotulo;
+}
+
+class VisualizarProjetoScreen extends StatefulWidget {
   final Projeto projeto;
 
   const VisualizarProjetoScreen({super.key, required this.projeto});
 
-  // --- Helpers de Ícone e Cor ---
-  IconData _getIcon() {
-    final tipo = (projeto.tipo ?? projeto.modeloProjeto ?? '').toUpperCase();
-    if (tipo.contains('WEB')) return Icons.language;
-    if (tipo.contains('MOBILE') || tipo.contains('APP'))
-      return Icons.smartphone;
-    if (tipo.contains('API')) return Icons.storage;
-    return Icons.folder_open;
+  @override
+  State<VisualizarProjetoScreen> createState() =>
+      _VisualizarProjetoScreenState();
+}
+
+class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
+  _Aba _aba = _Aba.resumo;
+  bool _carregando = true;
+
+  List<RecursoProjeto> _vinculos = [];
+  Map<int, Recurso> _recursos = {};
+  List<Teste> _testes = [];
+  List<Documento> _documentos = [];
+  List<Treinamento> _treinamentos = [];
+
+  /// Listas que não carregaram (mostra o aviso na aba delas).
+  final Set<_Aba> _falhas = {};
+
+  Projeto get p => widget.projeto;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
   }
 
-  Color _getIconColor() {
-    final tipo = (projeto.tipo ?? projeto.modeloProjeto ?? '').toUpperCase();
-    if (tipo.contains('WEB')) return Colors.blue;
-    if (tipo.contains('MOBILE')) return Colors.purple;
-    if (tipo.contains('API')) return Colors.orange;
-    return Colors.blue;
-  }
-
-  String _formatarOrcamento(double? valor) {
-    if (valor == null) return "Não estimado";
-    return NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(valor);
-  }
-
-  ({String label, Color bg, Color fg}) _complexidadeInfo() {
-    switch (projeto.complexidade) {
-      case ComplexidadeProjeto.alta:
-        return (
-          label: "Alta",
-          bg: Colors.red.shade100,
-          fg: Colors.red.shade700
-        );
-      case ComplexidadeProjeto.media:
-        return (
-          label: "Média",
-          bg: Colors.orange.shade100,
-          fg: Colors.orange.shade700
-        );
-      case ComplexidadeProjeto.baixa:
-        return (
-          label: "Baixa",
-          bg: Colors.green.shade100,
-          fg: Colors.green.shade700
-        );
-      default:
-        return (
-          label: "Não definida",
-          bg: Colors.grey.shade200,
-          fg: Colors.grey.shade700
-        );
+  Future<void> _carregar() async {
+    final id = p.id;
+    if (id == null) {
+      setState(() => _carregando = false);
+      return;
     }
+    setState(() {
+      _carregando = true;
+      _falhas.clear();
+    });
+
+    Future<T?> pegar<T>(_Aba aba, Future<T> Function() f) async {
+      try {
+        return await f();
+      } catch (_) {
+        _falhas.add(aba);
+        return null;
+      }
+    }
+
+    final r = await Future.wait([
+      // A rota /recursos-projeto/projeto/:id devolve só os dados do recurso
+      // (sem os do vínculo); a lista geral traz tudo e é filtrada aqui, como
+      // no painel "Recursos do projeto".
+      pegar(_Aba.recursos, () => RecursoProjetoService().getRecursosProjeto()),
+      pegar(_Aba.recursos, () => RecursosService.instance.listarRecursos()),
+      pegar(_Aba.testes, () => TesteService().getTestesByProjeto(id)),
+      pegar(_Aba.artefatos, () => DocumentosService.instance.listarPorProjeto(id)),
+      pegar(_Aba.treinamentos, () => TreinamentoService().getTreinamentos()),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _vinculos = [
+        for (final v in (r[0] as List<RecursoProjeto>?) ?? <RecursoProjeto>[])
+          if (v.projetoId == id) v
+      ];
+      _recursos = {
+        for (final x in (r[1] as List<Recurso>?) ?? <Recurso>[])
+          if (x.id != null) x.id!: x
+      };
+      _testes = (r[2] as List<Teste>?) ?? [];
+      _documentos = (r[3] as List<Documento>?) ?? [];
+      _treinamentos = [
+        for (final t in (r[4] as List<Treinamento>?) ?? <Treinamento>[])
+          if (t.projetoId == id) t
+      ];
+      _carregando = false;
+    });
   }
+
+  Future<void> _abrirPagina(Widget pagina) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => pagina));
+    if (mounted) _carregar();
+  }
+
+  Future<void> _gerenciarRecursos() async {
+    await abrirRecursosDoProjeto(context, p);
+    if (mounted) _carregar();
+  }
+
+  Future<void> _novoTeste() async {
+    await mostrarDialogo(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => TesteModal(
+        projetoId: p.id ?? 0,
+        onSave: (t) async {
+          await TesteService().createTeste(t);
+          avisarApp('Teste criado.', tipo: TipoAviso.sucesso);
+        },
+      ),
+    );
+    if (mounted) _carregar();
+  }
+
+  Future<void> _editarTeste(Teste teste) async {
+    await mostrarDialogo(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => TesteModal(
+        projetoId: p.id ?? 0,
+        testeExistente: teste,
+        onSave: (t) async {
+          await TesteService().updateTeste(t);
+          avisarApp('Teste atualizado.', tipo: TipoAviso.sucesso);
+        },
+      ),
+    );
+    if (mounted) _carregar();
+  }
+
+  Future<void> _excluirTeste(Teste teste) => _confirmarExclusao(
+        titulo: 'Excluir teste',
+        nome: teste.nome,
+        acao: () => TesteService().deleteTeste(teste.id!),
+        sucesso: 'Teste excluído.',
+      );
+
+  Future<void> _editarTreinamento(Treinamento treinamento) async {
+    await mostrarDialogo(
+      context: context,
+      builder: (_) => ModalCriarTreinamento(
+        projetoId: p.id ?? 0,
+        treinamentoEdicao: treinamento.toJson(),
+        onSuccess: () {},
+      ),
+    );
+    if (mounted) _carregar();
+  }
+
+  Future<void> _excluirTreinamento(Treinamento treinamento) =>
+      _confirmarExclusao(
+        titulo: 'Excluir treinamento',
+        nome: treinamento.nome,
+        acao: () => TreinamentoService().deleteTreinamento(treinamento.id!),
+        sucesso: 'Treinamento excluído.',
+      );
+
+  /// Controle de presença (planilha do treinamento).
+  void _presenca(Treinamento treinamento) => _abrirPagina(ControlePresencaScreen(
+        treinamentoId: treinamento.id ?? 0,
+        tituloTreinamento: treinamento.nome,
+      ));
+
+  Future<void> _confirmarExclusao({
+    required String titulo,
+    required String nome,
+    required Future<void> Function() acao,
+    required String sucesso,
+  }) async {
+    final confirmou = await mostrarDialogo<bool>(
+      context: context,
+      builder: (ctx) => ConfirmacaoIdv(
+        titulo: titulo,
+        mensagem: '$nome será excluído. Essa ação não pode ser desfeita.',
+        rotuloAcao: titulo,
+        aoConfirmar: () => Navigator.pop(ctx, true),
+      ),
+    );
+    if (confirmou != true) return;
+    try {
+      await acao();
+      avisarApp(sucesso, tipo: TipoAviso.sucesso);
+    } catch (_) {
+      avisarApp('Não foi possível excluir. Tente novamente.');
+    }
+    if (mounted) _carregar();
+  }
+
+  Future<void> _novoDocumento() async {
+    await mostrarDialogo(
+      context: context,
+      builder: (_) =>
+          ModalCriarDocIA(projetoId: p.id ?? 0, onSuccess: () {}),
+    );
+    if (mounted) _carregar();
+  }
+
+  Future<void> _novoTreinamento() async {
+    await mostrarDialogo(
+      context: context,
+      builder: (_) =>
+          ModalCriarTreinamento(projetoId: p.id ?? 0, onSuccess: () {}),
+    );
+    if (mounted) _carregar();
+  }
+
+  /// Abre o documento: no editor do app (com conteúdo salvo) ou o arquivo
+  /// do Google Docs (documentos antigos).
+  Future<void> _abrirDocumento(Documento d) async {
+    if (d.temConteudoEditavel && d.id != null) {
+      await _abrirPagina(VisualizarDocumentoScreen(
+        documentoId: d.id!,
+        nomeArquivo: d.nomeDoArquivo,
+        arquivoUrl: d.arquivoUrl,
+      ));
+      return;
+    }
+    final uri = Uri.tryParse(d.arquivoUrl);
+    final abriu = uri != null &&
+        d.arquivoUrl.isNotEmpty &&
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!abriu) avisarApp('Não foi possível abrir o documento.');
+  }
+
+  Future<void> _excluirDocumento(Documento d) => _confirmarExclusao(
+        titulo: 'Excluir documento',
+        nome: d.nomeDoArquivo,
+        acao: () => DocumentosService.instance.excluirDocumento(d.id!),
+        sucesso: 'Documento excluído.',
+      );
+
+  double get _custoRecursos =>
+      _vinculos.fold(0.0, (soma, v) => soma + v.custoEstimado());
 
   @override
   Widget build(BuildContext context) {
-    final icon = _getIcon();
-    final iconColor = _getIconColor();
-
+    final desktop = LayoutPrincipal.menuFixo(context);
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.pink),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Visualizar Projeto",
-                    style: TextStyle(
-                        color: Color(0xFF1E293B),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18)),
-                Text(projeto.nomeProjeto,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-              ],
-            ),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1300),
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                children: [
-                  // ========================================================
-                  // 1. SEÇÃO BENTO GRID
-                  // ========================================================
-                  LayoutBuilder(builder: (context, constraints) {
-                    if (constraints.maxWidth > 850) {
-                      return IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // COLUNA 1: Informações
-                            Expanded(
-                              flex: 5,
-                              child: _BentoCard(
-                                title: "Informações Básicas",
-                                icon: Icons.description_outlined,
-                                color: Colors.blue,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _InfoLabel(
-                                        label: "Descrição do Projeto",
-                                        value: projeto.descricao ??
-                                            "Sem descrição definida."),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                            child: _InfoLabel(
-                                                label: "Tipo de Projeto",
-                                                value:
-                                                    projeto.tipo ?? "Geral")),
-                                        Builder(builder: (context) {
-                                          final complexidade =
-                                              _complexidadeInfo();
-                                          return _StatusTag(
-                                              label: "Complexidade",
-                                              value: complexidade.label,
-                                              color: complexidade.bg,
-                                              textColor: complexidade.fg);
-                                        }),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _InfoLabel(
-                                        label: "Escopo",
-                                        value: projeto.escopo ??
-                                            "Escopo não definido."),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-
-                            // COLUNA 2: Pessoas
-                            Expanded(
-                              flex: 3,
-                              child: _BentoCard(
-                                title: "Gestão de Pessoas",
-                                icon: Icons.people_outline,
-                                color: Colors.purple,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _PersonRow(
-                                        role: "Cliente",
-                                        name: projeto.clienteNome ??
-                                            "Não informado"),
-                                    const SizedBox(height: 12),
-                                    const _PersonRow(
-                                        role: "Responsável",
-                                        name: "João Silva"),
-                                    const SizedBox(height: 12),
-                                    const _PersonRow(
-                                        role: "Criado por",
-                                        name: "Maria Santos"),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-
-                            // COLUNA 3: Metodologia e Orçamento
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                children: [
-                                  Expanded(
-                                    child: _BentoCard(
-                                      title: "Metodologia",
-                                      icon: Icons.settings_suggest_outlined,
-                                      color: Colors.green,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          _InfoLabel(
-                                              label: "Modelo",
-                                              value: projeto.modeloProjeto ??
-                                                  "Ágil"),
-                                          const SizedBox(height: 8),
-                                          const _InfoLabel(
-                                              label: "Framework",
-                                              value: "Scrum"),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDCFCE7),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: Colors.green.shade200),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Icon(Icons.attach_money,
-                                                color: Colors.green.shade700,
-                                                size: 20),
-                                            const SizedBox(width: 8),
-                                            Text("Orçamento",
-                                                style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    color:
-                                                        Colors.green.shade800)),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                            _formatarOrcamento(
-                                                projeto.orcamentoEstimado),
-                                            style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green.shade900)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else {
-                      return Column(
-                        children: [
-                          _BentoCard(
-                              title: "Informações Básicas",
-                              icon: Icons.description,
-                              color: Colors.blue,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _InfoLabel(
-                                      label: "Descrição",
-                                      value: projeto.descricao ?? ""),
-                                  const SizedBox(height: 12),
-                                  _InfoLabel(
-                                      label: "Tipo", value: projeto.tipo ?? ""),
-                                ],
-                              )),
-                          const SizedBox(height: 16),
-                          _BentoCard(
-                            title: "Gestão de Pessoas",
-                            icon: Icons.people,
-                            color: Colors.purple,
-                            child: _PersonRow(
-                                role: "Cliente",
-                                name: projeto.clienteNome ?? "-"),
-                          ),
-                        ],
-                      );
-                    }
-                  }),
-
-                  const SizedBox(height: 24),
-
-                  // ========================================================
-                  // 2. SEÇÃO PLANEJAMENTO
-                  // ========================================================
-                  _BentoCard(
-                    title: "Planejamento",
-                    icon: Icons.calendar_today_outlined,
-                    color: Colors.orange,
-                    child: LayoutBuilder(builder: (context, constraints) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _DateInfo(
-                              label: "Data de Início",
-                              value: _formatDate(projeto.dataInicio)),
-                          _DateInfo(
-                              label: "Previsão de Término",
-                              value: _formatDate(projeto.dataFinalPrevisto)),
-                          if (constraints.maxWidth > 500) ...[
-                            const _DateInfo(
-                                label: "Data de Término Real",
-                                value: "--/--/----"),
-                            const _DateInfo(
-                                label: "Duração Total", value: "12 meses"),
-                          ]
-                        ],
-                      );
-                    }),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // ========================================================
-                  // 3. SEÇÃO DE CARDS DE GESTÃO
-                  // ========================================================
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isDesktop = constraints.maxWidth > 800;
-                      return GridView.count(
-                        crossAxisCount: isDesktop ? 2 : 1,
-                        crossAxisSpacing: 20,
-                        mainAxisSpacing: 20,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        childAspectRatio: isDesktop ? 2.5 : 1.6,
-                        children: [
-                          // --- CARD RECURSOS (ATUALIZADO) ---
-                          _DashboardInfoCard(
-                            title: "Gestão de Recursos",
-                            icon: Icons.people,
-                            themeColor: const Color(0xFF1E40AF),
-                            stats: const [
-                              {
-                                "label": "Desenvolvedores",
-                                "value": "6 membros"
-                              },
-                              {"label": "QA", "value": "3 membros"},
-                              {"label": "Product Owner", "value": "1 membro"},
-                            ],
-                            buttonText: "Ver Recursos",
-                            // NAVEGAÇÃO PASSANDO O PROJETO
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      Recursos(projetoVinculado: projeto),
-                                ),
-                              );
-                            },
-                          ),
-                          // ----------------------------------
-
-                          _DashboardInfoCard(
-                            title: "Documentação e Artefatos",
-                            icon: Icons.folder,
-                            themeColor: const Color(0xFF16A34A),
-                            stats: const [
-                              {"label": "Documentos", "value": "Acessar"},
-                              {"label": "Repositório", "value": "Drive"},
-                            ],
-                            buttonText: "Ver Documentos",
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      DocumentosProjetoScreen(projeto: projeto),
-                                ),
-                              );
-                            },
-                          ),
-
-                          _DashboardInfoCard(
-                            title: "Relatórios de Treinamentos",
-                            icon: FontAwesomeIcons.graduationCap,
-                            themeColor: const Color(0xFFEA580C),
-                            stats: const [
-                              {"label": "Treinamentos", "value": "Verificar"},
-                              {"label": "Participantes", "value": "Gerenciar"},
-                              {"label": "Frequência", "value": "Sheets"},
-                            ],
-                            buttonText: "Ver Treinamentos",
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      ListaTreinamentosScreen(projeto: projeto),
-                                ),
-                              );
-                            },
-                          ),
-
-                          _DashboardInfoCard(
-                            title: "Relatórios de Testes",
-                            icon: Icons.bug_report,
-                            themeColor: const Color(0xFF9333EA),
-                            stats: const [
-                              {"label": "Testes executados", "value": "156"},
-                              {
-                                "label": "Taxa de sucesso",
-                                "value": "94%",
-                                "valueColor": Colors.green
-                              },
-                              {
-                                "label": "Bugs encontrados",
-                                "value": "8",
-                                "valueColor": Colors.red
-                              },
-                            ],
-                            buttonText: "Ver Relatórios",
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => TestesScreen(
-                                        projetoId: projeto.id ?? 0,
-                                        nomeProjeto: projeto.nomeProjeto)),
-                              );
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+      drawer: BarraLateral.drawer(context),
+      backgroundColor: desktop ? Colors.transparent : null,
+      body: DecoratedBox(
+        decoration: desktop
+            ? const BoxDecoration()
+            : const BoxDecoration(gradient: StyleProjetos.gradienteFundo),
+        child: SafeArea(
+          child: desktop
+              ? EscalaDesign(
+                  larguraBase: LayoutPrincipal.larguraBase -
+                      LayoutPrincipal.recuoConteudo,
+                  child: _conteudo(true),
+                )
+              : _conteudo(false),
         ),
       ),
     );
   }
 
-  String _formatDate(dynamic date) {
-    if (date == null) return "--/--/----";
-    try {
-      if (date is DateTime) {
-        return DateFormat('dd/MM/yyyy').format(date);
-      } else if (date is String) {
-        final parsed = DateTime.parse(date);
-        return DateFormat('dd/MM/yyyy').format(parsed);
-      }
-      return "--/--/----";
-    } catch (e) {
-      return "--/--/----";
+  Widget _conteudo(bool desktop) {
+    return SingleChildScrollView(
+      padding: desktop
+          ? const EdgeInsets.fromLTRB(25, 48, 36, 32)
+          : const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Cabecalho(projeto: p, desktop: desktop),
+          SizedBox(height: desktop ? 36 : 20),
+          AbasSublinhadas(
+            rotulos: [for (final a in _Aba.values) a.rotulo],
+            atual: _aba.index,
+            aoMudar: (i) => setState(() => _aba = _Aba.values[i]),
+          ),
+          const SizedBox(height: 22),
+          if (_carregando)
+            const Padding(
+              padding: EdgeInsets.all(48),
+              child: Center(
+                  child: CircularProgressIndicator(color: CoresIdv.laranja)),
+            )
+          else ...[
+            if (_falhas.contains(_aba))
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: _AvisoFalha(),
+              ),
+            switch (_aba) {
+              _Aba.resumo => _resumo(desktop),
+              _Aba.recursos => _abaRecursos(),
+              _Aba.testes => _abaTestes(desktop),
+              _Aba.artefatos => _abaArtefatos(),
+              _Aba.treinamentos => _abaTreinamentos(),
+            },
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------- Resumo
+
+  Widget _resumo(bool desktop) {
+    final membros = context.watch<ProjetosProvider>().membrosDoProjeto(p.id);
+    final prazo = _prazo();
+
+    final indicadores = [
+      IndicadorRelatorio(
+        icone: FontAwesomeIcons.sackDollar,
+        titulo: 'Orçamento estimado',
+        valor: p.orcamentoEstimado == null
+            ? 'Não estimado'
+            : moeda.format(p.orcamentoEstimado),
+        detalhe: 'Definido na criação do projeto',
+        destaque: true,
+      ),
+      IndicadorRelatorio(
+        icone: FontAwesomeIcons.boxesStacked,
+        titulo: 'Custo dos recursos',
+        valor: dinheiroCurto(_custoRecursos),
+        detalhe: _vinculos.length == 1
+            ? '1 recurso vinculado'
+            : '${_vinculos.length} recursos vinculados',
+      ),
+      IndicadorRelatorio(
+        icone: FontAwesomeIcons.hourglassHalf,
+        titulo: 'Prazo',
+        valor: prazo.valor,
+        complemento: prazo.complemento,
+        detalhe: prazo.detalhe,
+      ),
+      IndicadorRelatorio(
+        icone: FontAwesomeIcons.peopleGroup,
+        titulo: 'Equipe',
+        valor: '${membros.length}',
+        complemento: membros.length == 1 ? ' pessoa' : ' pessoas',
+        detalhe: membros.isEmpty
+            ? 'Ninguém vinculado ainda'
+            : membros.take(2).map((m) => m.nome.split(' ').first).join(', ') +
+                (membros.length > 2 ? ' e mais ${membros.length - 2}' : ''),
+      ),
+    ];
+
+    final sobre = CartaoRelatorio(
+      titulo: 'Sobre o projeto',
+      subtitulo: p.clienteNome == null ? null : 'Cliente: ${p.clienteNome}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _ou(p.descricao, 'Sem descrição.'),
+            style: fonteIdv(tamanho: 14, altura: 1.5),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 28,
+            runSpacing: 16,
+            children: [
+              _Info('Tipo', _ou(p.tipo, 'Não informado')),
+              _Info('Modelo', _ou(p.modeloProjeto, 'Não informado')),
+              _Info('Metodologia', _ou(p.metodologia, 'Não informada')),
+              _InfoWidget('Complexidade', _Complexidade(p.complexidade)),
+            ],
+          ),
+          if ((p.escopo ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 18),
+            _Info('Escopo', p.escopo!.trim(), largo: true),
+          ],
+        ],
+      ),
+    );
+
+    final planejamento = CartaoRelatorio(
+      titulo: 'Planejamento',
+      child: Column(
+        children: [
+          _LinhaData('Início', p.dataInicio),
+          _LinhaData('Previsão de término', p.dataFinalPrevisto),
+          _LinhaData('Término real', p.dataFinal, vazio: 'Em andamento'),
+          _LinhaTexto('Duração prevista', _duracao(), ultima: true),
+        ],
+      ),
+    );
+
+    final equipe = CartaoRelatorio(
+      titulo: 'Equipe',
+      subtitulo: 'Pessoas vinculadas em Gestão de Equipes',
+      child: membros.isEmpty
+          ? const SemDados(texto: 'Ninguém vinculado ao projeto.')
+          : Column(
+              children: [
+                for (var i = 0; i < membros.length; i++)
+                  _Pessoa(nome: membros[i].nome, ultima: i == membros.length - 1),
+              ],
+            ),
+    );
+
+    if (!desktop) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final k in indicadores) ...[k, const SizedBox(height: 12)],
+          const SizedBox(height: 8),
+          sobre,
+          const SizedBox(height: 16),
+          planejamento,
+          const SizedBox(height: 16),
+          equipe,
+        ],
+      );
     }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < indicadores.length; i++) ...[
+              if (i > 0) const SizedBox(width: 18),
+              Expanded(child: indicadores[i]),
+            ],
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 3, child: sobre),
+            const SizedBox(width: 18),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [planejamento, const SizedBox(height: 18), equipe],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  ({String valor, String? complemento, String detalhe}) _prazo() {
+    String data(DateTime d) => dataCurta.format(d);
+    if (p.dataFinal != null) {
+      return (
+        valor: 'Concluído',
+        complemento: null,
+        detalhe: 'em ${data(p.dataFinal!)}'
+      );
+    }
+    final previsto = p.dataFinalPrevisto;
+    if (previsto == null) {
+      return (valor: 'Sem prazo', complemento: null, detalhe: 'Previsão não definida');
+    }
+    final hoje = DateUtils.dateOnly(DateTime.now());
+    final dias = DateUtils.dateOnly(previsto).difference(hoje).inDays;
+    if (dias >= 0) {
+      return (
+        valor: '$dias',
+        complemento: dias == 1 ? ' dia' : ' dias',
+        detalhe: 'restantes · até ${data(previsto)}'
+      );
+    }
+    return (
+      valor: '${-dias}',
+      complemento: -dias == 1 ? ' dia' : ' dias',
+      detalhe: 'de atraso · previsto ${data(previsto)}'
+    );
+  }
+
+  String _duracao() {
+    final ini = p.dataInicio;
+    final fim = p.dataFinal ?? p.dataFinalPrevisto;
+    if (ini == null || fim == null) return 'Não definida';
+    final dias = fim.difference(ini).inDays;
+    if (dias < 0) return 'Não definida';
+    if (dias < 60) return dias == 1 ? '1 dia' : '$dias dias';
+    final meses = (dias / 30).round();
+    return '$meses meses ($dias dias)';
+  }
+
+  // -------------------------------------------------------------- Recursos
+
+  Widget _abaRecursos() {
+    return CartaoRelatorio(
+      titulo: 'Recursos do projeto',
+      subtitulo: 'Custo estimado: ${moeda.format(_custoRecursos)}',
+      acao: BotaoSecundarioIdv(
+        rotulo: 'Gerenciar recursos',
+        icone: FontAwesomeIcons.sliders,
+        aoTocar: _gerenciarRecursos,
+      ),
+      child: TabelaRelatorio(
+        colunas: const ['Recurso', 'Quantidade', 'Cobrança', 'Período', 'Custo estimado'],
+        pesos: const [3, 1, 2, 2, 2],
+        vazio: 'Nenhum recurso vinculado. Use "Gerenciar recursos".',
+        linhas: [
+          for (final v in _vinculos)
+            [
+              CelulaRelatorio(
+                _recursos[v.recursoId]?.nome ?? 'Recurso #${v.recursoId}',
+                abaixo: _recursos[v.recursoId]?.tipo,
+                forte: true,
+              ),
+              CelulaRelatorio('${v.quantidade}'),
+              CelulaRelatorio(
+                v.cobranca.rotulo,
+                abaixo: v.custoHora == null
+                    ? null
+                    : '${moeda.format(v.custoHora)}${v.cobranca.sufixo}',
+              ),
+              CelulaRelatorio(
+                dataCurta.format(v.dataAlocacao),
+                abaixo: v.dataDesalocacao == null
+                    ? 'em uso'
+                    : 'até ${dataCurta.format(v.dataDesalocacao!)}',
+              ),
+              CelulaRelatorio(moeda.format(v.custoEstimado()), forte: true),
+            ],
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------- Testes
+
+  Widget _abaTestes(bool desktop) {
+    final concluidos =
+        _testes.where((t) => t.situacao.toLowerCase() == 'concluido').length;
+    final pendentes = _testes.length - concluidos;
+    final taxa =
+        _testes.isEmpty ? 0 : (concluidos * 100 / _testes.length).round();
+
+    final indicadores = [
+      IndicadorRelatorio(
+          icone: FontAwesomeIcons.clipboardCheck,
+          titulo: 'Testes',
+          valor: '${_testes.length}',
+          detalhe: 'cadastrados no projeto'),
+      IndicadorRelatorio(
+          icone: FontAwesomeIcons.circleCheck,
+          titulo: 'Concluídos',
+          valor: '$concluidos',
+          complemento: '/${_testes.length}',
+          detalhe: 'executados com sucesso'),
+      IndicadorRelatorio(
+          icone: FontAwesomeIcons.clock,
+          titulo: 'Pendentes',
+          valor: '$pendentes',
+          detalhe: 'aguardando execução'),
+      IndicadorRelatorio(
+          icone: FontAwesomeIcons.percent,
+          titulo: 'Progresso',
+          valor: '$taxa',
+          complemento: '%',
+          detalhe: 'dos testes concluídos'),
+    ];
+
+    final lista = CartaoRelatorio(
+      titulo: 'Testes do projeto',
+      acao: BotaoSecundarioIdv(
+          rotulo: 'Novo teste', icone: FontAwesomeIcons.plus, aoTocar: _novoTeste),
+      child: TabelaRelatorio(
+        colunas: const ['Teste', 'Situação', ''],
+        pesos: const [6, 2, 1],
+        vazio: 'Nenhum teste cadastrado. Use "Novo teste".',
+        linhas: [
+          for (final t in _testes)
+            [
+              CelulaRelatorio(t.nome, abaixo: t.descricao, forte: true),
+              _EtiquetaSituacao(t.situacao),
+              _AcoesLinha([
+                (FontAwesomeIcons.penToSquare, 'Editar teste', () => _editarTeste(t), false),
+                (FontAwesomeIcons.trashCan, 'Excluir teste',
+                    () => _excluirTeste(t), true),
+              ]),
+            ],
+        ],
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _linhaIndicadores(indicadores, desktop),
+        const SizedBox(height: 20),
+        lista,
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------- Artefatos
+
+  Widget _abaArtefatos() {
+    return CartaoRelatorio(
+      titulo: 'Documentação e artefatos',
+      subtitulo: _documentos.length == 1
+          ? '1 documento'
+          : '${_documentos.length} documentos',
+      acao: BotaoSecundarioIdv(
+          rotulo: 'Novo documento',
+          icone: FontAwesomeIcons.wandMagicSparkles,
+          aoTocar: _novoDocumento),
+      child: TabelaRelatorio(
+        colunas: const ['Documento', 'Tipo', 'Criado em', 'Aprovação', ''],
+        pesos: const [4, 2, 2, 2, 1],
+        vazio: 'Nenhum documento. Use "Novo documento" para gerar com a IA.',
+        linhas: [
+          for (final d in _documentos)
+            [
+              CelulaRelatorio(d.nomeDoArquivo, abaixo: d.descricao, forte: true),
+              CelulaRelatorio(_ou(d.tipo, '—')),
+              CelulaRelatorio(
+                  d.dataCriacao == null ? '—' : dataCurta.format(d.dataCriacao!)),
+              d.dataAprovacao == null
+                  ? const _Etiqueta('Em revisão', aprovado: false)
+                  : const _Etiqueta('Aprovado', aprovado: true),
+              _AcoesLinha([
+                (FontAwesomeIcons.solidEye, 'Abrir documento',
+                    () => _abrirDocumento(d), false),
+                (FontAwesomeIcons.trashCan, 'Excluir documento',
+                    () => _excluirDocumento(d), true),
+              ]),
+            ],
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------- Treinamentos
+
+  Widget _abaTreinamentos() {
+    final horas =
+        _treinamentos.fold<int>(0, (s, t) => s + (t.duracaoHoras ?? 0));
+    return CartaoRelatorio(
+      titulo: 'Treinamentos do projeto',
+      subtitulo: '${_treinamentos.length} '
+          '${_treinamentos.length == 1 ? 'treinamento' : 'treinamentos'}'
+          ' · $horas h no total',
+      acao: BotaoSecundarioIdv(
+          rotulo: 'Novo treinamento',
+          icone: FontAwesomeIcons.plus,
+          aoTocar: _novoTreinamento),
+      child: TabelaRelatorio(
+        colunas: const ['Treinamento', 'Tipo', 'Período', 'Carga', 'Instrutor', ''],
+        pesos: const [3, 2, 2, 1, 2, 2],
+        vazio: 'Nenhum treinamento. Use "Novo treinamento".',
+        linhas: [
+          for (final t in _treinamentos)
+            [
+              CelulaRelatorio(t.nome, abaixo: t.descricao, forte: true),
+              CelulaRelatorio(_ou(t.tipoTreinamento, '—')),
+              CelulaRelatorio(
+                t.dataInicio == null ? '—' : dataCurta.format(t.dataInicio!),
+                abaixo: t.dataTermino == null
+                    ? null
+                    : 'até ${dataCurta.format(t.dataTermino!)}',
+              ),
+              CelulaRelatorio(t.duracaoHoras == null ? '—' : '${t.duracaoHoras} h'),
+              CelulaRelatorio(_ou(t.instrutor, '—')),
+              _AcoesLinha([
+                (FontAwesomeIcons.userCheck, 'Controle de presença',
+                    () => _presenca(t), false),
+                (FontAwesomeIcons.penToSquare, 'Editar treinamento',
+                    () => _editarTreinamento(t), false),
+                (FontAwesomeIcons.trashCan, 'Excluir treinamento',
+                    () => _excluirTreinamento(t), true),
+              ]),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _linhaIndicadores(List<Widget> itens, bool desktop) {
+    if (!desktop) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [for (final k in itens) ...[k, const SizedBox(height: 12)]],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < itens.length; i++) ...[
+          if (i > 0) const SizedBox(width: 18),
+          Expanded(child: itens[i]),
+        ],
+      ],
+    );
   }
 }
 
-// ============================================================================
-// WIDGETS AUXILIARES (IGUAIS AO ANTERIOR)
-// ============================================================================
+String _ou(String? v, String vazio) =>
+    (v == null || v.trim().isEmpty) ? vazio : v.trim();
 
-class _BentoCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final Widget child;
+// =====================================================================
+// Peças da tela
+// =====================================================================
 
-  const _BentoCard(
-      {required this.title,
-      required this.icon,
-      required this.color,
-      required this.child});
+/// Voltar, nome do projeto, cliente e status.
+class _Cabecalho extends StatelessWidget {
+  const _Cabecalho({required this.projeto, required this.desktop});
+
+  final Projeto projeto;
+  final bool desktop;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = projeto.statusCalculado;
+    final estilo = EstiloStatus.de(status);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: desktop ? 6 : 0, right: 10),
+          child: IconButton(
+            tooltip: 'Voltar',
+            onPressed: () => Navigator.maybePop(context),
+            icon: const Icon(FontAwesomeIcons.arrowLeft,
+                color: StyleProjetos.azulEscuro),
+          ),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                projeto.nomeProjeto,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: desktop
+                    ? StyleProjetos.titulo
+                    : StyleProjetos.titulo.copyWith(fontSize: 24),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Pílula do tamanho do texto (sem alignment, que esticava).
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: estilo.gradiente,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Text(status,
+                        style: StyleProjetos.pill.copyWith(color: estilo.corTexto)),
+                  ),
+                  Text(
+                    _ou(projeto.clienteNome, 'Cliente não informado'),
+                    style: StyleProjetos.cardCliente,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "Rótulo" pequeno em cima do valor.
+class _Info extends StatelessWidget {
+  const _Info(this.rotulo, this.valor, {this.largo = false});
+  final String rotulo;
+  final String valor;
+  final bool largo;
+
+  @override
+  Widget build(BuildContext context) {
+    return _InfoWidget(
+      rotulo,
+      Text(valor, style: fonteIdv(tamanho: 14, peso: FontWeight.w500, altura: 1.45)),
+      largo: largo,
+    );
+  }
+}
+
+class _InfoWidget extends StatelessWidget {
+  const _InfoWidget(this.rotulo, this.valor, {this.largo = false});
+  final String rotulo;
+  final Widget valor;
+  final bool largo;
+
+  @override
+  Widget build(BuildContext context) {
+    final coluna = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(rotulo,
+            style: fonteIdv(
+                tamanho: 12, peso: FontWeight.w500, cor: CoresIdv.textoSecundario)),
+        const SizedBox(height: 4),
+        valor,
+      ],
+    );
+    return largo ? coluna : ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 120), child: coluna);
+  }
+}
+
+class _Complexidade extends StatelessWidget {
+  const _Complexidade(this.valor);
+  final ComplexidadeProjeto? valor;
+
+  @override
+  Widget build(BuildContext context) {
+    final (texto, fundo, cor) = switch (valor) {
+      ComplexidadeProjeto.alta => ('Alta', const Color(0xFFFDECEA), const Color(0xFFB42318)),
+      ComplexidadeProjeto.media => ('Média', const Color(0xFFFFF4EC), const Color(0xFFC24A00)),
+      ComplexidadeProjeto.baixa => ('Baixa', const Color(0xFFE7F6EC), const Color(0xFF1E6B41)),
+      _ => ('Não definida', CoresIdv.azulSuave, StyleProjetos.textoSecundario),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(999)),
+      child: Text(texto, style: fonteIdv(tamanho: 12, peso: FontWeight.w600, cor: cor)),
+    );
+  }
+}
+
+class _LinhaData extends StatelessWidget {
+  const _LinhaData(this.rotulo, this.data, {this.vazio = 'Não definida'});
+  final String rotulo;
+  final DateTime? data;
+  final String vazio;
+
+  @override
+  Widget build(BuildContext context) => _LinhaTexto(
+      rotulo, data == null ? vazio : dataCurta.format(data!),
+      apagado: data == null);
+}
+
+class _LinhaTexto extends StatelessWidget {
+  const _LinhaTexto(this.rotulo, this.valor,
+      {this.ultima = false, this.apagado = false});
+  final String rotulo;
+  final String valor;
+  final bool ultima;
+  final bool apagado;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4))
-        ],
-        border: Border.all(color: Colors.grey.shade100),
+        border: ultima
+            ? null
+            : const Border(bottom: BorderSide(color: StyleProjetos.divisoria)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 8),
-              Text(title,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700])),
-            ],
+          Expanded(
+            child: Text(rotulo,
+                style: fonteIdv(tamanho: 13, cor: CoresIdv.textoSecundario)),
           ),
-          const SizedBox(height: 16),
-          child,
+          Text(valor,
+              style: fonteIdv(
+                  tamanho: 14,
+                  peso: FontWeight.w500,
+                  cor: apagado ? CoresIdv.textoSecundario : CoresIdv.texto)),
         ],
       ),
     );
   }
 }
 
-class _InfoLabel extends StatelessWidget {
-  final String label;
-  final String value;
+/// Pessoa da equipe: avatar com as iniciais e o nome.
+class _Pessoa extends StatelessWidget {
+  const _Pessoa({required this.nome, required this.ultima});
+  final String nome;
+  final bool ultima;
 
-  const _InfoLabel({required this.label, required this.value});
+  String get _iniciais {
+    final partes =
+        nome.trim().split(RegExp(r'\s+')).where((x) => x.isNotEmpty).toList();
+    if (partes.isEmpty) return '?';
+    final ultimaLetra = partes.length > 1 ? partes.last[0] : '';
+    return (partes.first[0] + ultimaLetra).toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-        const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 14, color: Color(0xFF1E293B), height: 1.4)),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      decoration: BoxDecoration(
+        border: ultima
+            ? null
+            : const Border(bottom: BorderSide(color: StyleProjetos.divisoria)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+                color: StyleProjetos.azulEscuro, shape: BoxShape.circle),
+            child: Text(_iniciais,
+                style: fonteIdv(
+                    tamanho: 12, peso: FontWeight.w700, cor: Colors.white)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(nome,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: fonteIdv(tamanho: 14, peso: FontWeight.w500)),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _StatusTag extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final Color textColor;
-
-  const _StatusTag(
-      {required this.label,
-      required this.value,
-      required this.color,
-      required this.textColor});
+class _EtiquetaSituacao extends StatelessWidget {
+  const _EtiquetaSituacao(this.situacao);
+  final String situacao;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-              color: color, borderRadius: BorderRadius.circular(6)),
-          child: Text(value,
-              style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.bold, color: textColor)),
-        ),
-      ],
+    final concluido = situacao.toLowerCase() == 'concluido';
+    return _Etiqueta(concluido ? 'Concluído' : 'Pendente', aprovado: concluido);
+  }
+}
+
+class _Etiqueta extends StatelessWidget {
+  const _Etiqueta(this.texto, {required this.aprovado});
+  final String texto;
+  final bool aprovado;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: aprovado ? const Color(0xFFE7F6EC) : const Color(0xFFFFF7A1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(texto,
+          style: fonteIdv(
+              tamanho: 12,
+              peso: FontWeight.w600,
+              cor: aprovado ? const Color(0xFF1E6B41) : StyleProjetos.azulEscuro)),
     );
   }
 }
 
-class _PersonRow extends StatelessWidget {
-  final String role;
-  final String name;
+class _AvisoFalha extends StatelessWidget {
+  const _AvisoFalha();
 
-  const _PersonRow({required this.role, required this.name});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDECEA),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(FontAwesomeIcons.triangleExclamation,
+              size: 20, color: CoresIdv.vermelho),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Não foi possível carregar esta parte. Confira se o back-end '
+              'está rodando e tente de novo.',
+              style: fonteIdv(tamanho: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ícones de ação no fim da linha (editar, excluir...), com dica.
+class _AcoesLinha extends StatelessWidget {
+  const _AcoesLinha(this.acoes);
+
+  /// (ícone, dica, ao tocar, é de perigo)
+  final List<(IconData, String, VoidCallback, bool)> acoes;
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Icon(Icons.person_outline, size: 16, color: Colors.grey[400]),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(role, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-            Text(name,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF1E293B))),
-          ],
-        )
-      ],
-    );
-  }
-}
-
-class _DateInfo extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _DateInfo({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.calendar_today, size: 14, color: Colors.grey[400]),
-            const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1E293B))),
-      ],
-    );
-  }
-}
-
-class _DashboardInfoCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color themeColor;
-  final List<Map<String, dynamic>> stats;
-  final String buttonText;
-  final VoidCallback onPressed;
-
-  const _DashboardInfoCard({
-    required this.title,
-    required this.icon,
-    required this.themeColor,
-    required this.stats,
-    required this.buttonText,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                            color: themeColor,
-                            borderRadius: BorderRadius.circular(6)),
-                        child: Icon(icon, color: Colors.white, size: 18),
-                      ),
-                      const SizedBox(width: 10),
-                      Flexible(
-                          child: Text(title,
-                              style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1E293B)),
-                              overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  ...stats.map((stat) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(stat['label'],
-                                style: TextStyle(
-                                    color: Colors.grey[600], fontSize: 13)),
-                            Text(stat['value'],
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    color: stat['valueColor'] ??
-                                        const Color(0xFF1E293B))),
-                          ],
-                        ),
-                      )),
-                ],
-              ),
-            ),
+        for (final (icone, dica, aoTocar, perigo) in acoes)
+          IconButton(
+            tooltip: dica,
+            onPressed: aoTocar,
+            visualDensity: VisualDensity.compact,
+            // Mesmos ícones e cores das ações do card de projeto.
+            icon: FaIcon(icone,
+                size: 16,
+                color: perigo ? const Color(0xFFD62A1E) : StyleProjetos.azulEscuro),
           ),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: ElevatedButton.icon(
-              onPressed: onPressed,
-              icon: const Icon(Icons.arrow_forward,
-                  size: 16, color: Colors.white),
-              label: Text(buttonText, style: const TextStyle(fontSize: 13)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: themeColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero),
-              ),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

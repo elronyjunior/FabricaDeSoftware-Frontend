@@ -75,6 +75,7 @@ class SelecaoIdv<T> extends StatelessWidget {
     required this.itens,
     required this.rotulo,
     required this.aoMudar,
+    this.icone,
   });
 
   final String hint;
@@ -82,6 +83,9 @@ class SelecaoIdv<T> extends StatelessWidget {
   final List<T> itens;
   final String Function(T item) rotulo;
   final ValueChanged<T?> aoMudar;
+
+  /// Ícone antes do nome de cada opção (opcional).
+  final IconData Function(T item)? icone;
 
   @override
   Widget build(BuildContext context) {
@@ -107,8 +111,18 @@ class SelecaoIdv<T> extends StatelessWidget {
           items: itens
               .map((item) => DropdownMenuItem<T>(
                     value: item,
-                    child: Text(rotulo(item),
-                        overflow: TextOverflow.ellipsis, style: fonteIdv()),
+                    child: icone == null
+                        ? Text(rotulo(item),
+                            overflow: TextOverflow.ellipsis, style: fonteIdv())
+                        : Row(children: [
+                            Icon(icone!(item), size: 18, color: CoresIdv.azul),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(rotulo(item),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: fonteIdv()),
+                            ),
+                          ]),
                   ))
               .toList(),
           onChanged: aoMudar,
