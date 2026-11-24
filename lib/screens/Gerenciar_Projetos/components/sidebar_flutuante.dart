@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
+import 'package:fabrica_software_app/providers/auth_provider.dart';
 import 'package:fabrica_software_app/services/auth_service.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -63,6 +65,13 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
 
   /// Usuário logado (rodapé do menu).
   String _nome = '';
+
+  /// Nome mostrado no rodapé: o do AuthProvider (muda ao editar o perfil)
+  /// ou, enquanto ele não carrega, o guardado no login.
+  String _nomeAtual = '';
+
+  /// Foto do usuário logado (null = mostra a inicial).
+  ImageProvider? _fotoAtual;
   String _nivel = '';
 
   @override
@@ -72,6 +81,8 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
   }
 
   Future<void> _carregarUsuario() async {
+    // Foto guardada neste navegador (aparece no avatar do rodapé).
+    context.read<AuthProvider>().carregarFoto();
     final nome = await AuthService.instance.userName;
     final nivel = await AuthService.instance.userNivel;
     if (!mounted) return;
@@ -108,6 +119,11 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
 
   @override
   Widget build(BuildContext context) {
+    // Ao editar o perfil, o nome novo aparece na hora (lido aqui, no
+    // build: o Provider não aceita select dentro do AnimatedBuilder).
+    _nomeAtual =
+        (context.select<AuthProvider, String?>((a) => a.nome) ?? _nome).trim();
+    _fotoAtual = context.select<AuthProvider, ImageProvider?>((a) => a.foto.imagem);
     return MouseRegion(
       onEnter: (_) => _abrir(),
       onExit: (_) => _fechar(),
@@ -208,7 +224,8 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
                     const SizedBox(height: 14),
                     _RodapeUsuario(
                       t: t,
-                      nome: _nome,
+                      nome: _nomeAtual,
+                      foto: _fotoAtual,
                       nivel: _nivel,
                       onPerfil: () => _executar(widget.onPerfil),
                       onTema: () => _executar(widget.onAlternarTema),
@@ -342,6 +359,7 @@ class _RodapeUsuario extends StatelessWidget {
   const _RodapeUsuario({
     required this.t,
     required this.nome,
+    this.foto,
     required this.nivel,
     required this.onPerfil,
     required this.onTema,
@@ -350,6 +368,7 @@ class _RodapeUsuario extends StatelessWidget {
 
   final double t;
   final String nome;
+  final ImageProvider? foto;
   final String nivel;
   final VoidCallback onPerfil;
   final VoidCallback onTema;
@@ -381,7 +400,9 @@ class _RodapeUsuario extends StatelessWidget {
           onTap: onPerfil,
           child: SizedBox.square(
             dimension: _avatar,
-            child: Center(
+            child: foto != null
+                ? Ink.image(image: foto!, fit: BoxFit.cover)
+                : Center(
               child: Text(_inicial,
                   style: GoogleFonts.inter(
                       fontSize: 16,
