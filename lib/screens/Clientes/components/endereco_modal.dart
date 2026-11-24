@@ -2,6 +2,7 @@ import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_
 import 'package:fabrica_software_app/models/endereco.dart';
 import 'package:fabrica_software_app/screens/Clientes/components/mapa_endereco.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // =====================================================================
 // Endereço do cliente: aba "Endereço" do painel do cliente (antes abria
@@ -24,11 +25,12 @@ class EnderecoControles {
 
   void preencher(Endereco e) {
     logradouro.text = e.logradouro;
-    cep.text = e.cep;
+    cep.text = formatarCep(e.cep);
     numero.text = e.numero ?? '';
     bairro.text = e.bairro ?? '';
     cidade.text = e.cidade;
-    estado.text = e.estado;
+    // Endereços antigos podem ter o nome do estado: mostra a sigla.
+    estado.text = siglaUf(e.estado) ?? e.estado;
     pais.text = e.pais;
     complemento.text = e.complemento ?? '';
   }
@@ -39,11 +41,11 @@ class EnderecoControles {
         c.text.trim().isEmpty ? null : c.text.trim();
     return {
       'logradouro': logradouro.text.trim(),
-      'cep': cep.text.trim(),
+      'cep': formatarCep(cep.text),
       'numero': opcional(numero),
       'bairro': opcional(bairro),
       'cidade': cidade.text.trim(),
-      'estado': estado.text.trim(),
+      'estado': estado.text.trim().toUpperCase(),
       'pais': pais.text.trim(),
       'complemento': opcional(complemento),
     };
@@ -96,17 +98,21 @@ class _FormularioEnderecoState extends State<FormularioEndereco> {
     setState(() {
       if (outraRua) _c.bairro.clear();
       _c.numero.text = e.numero ?? '';
-      por(_c.cep, e.cep);
+      por(_c.cep, e.cep == null ? null : formatarCep(e.cep!));
       por(_c.logradouro, e.logradouro);
       por(_c.bairro, e.bairro);
       por(_c.cidade, e.cidade);
-      por(_c.estado, e.uf);
+      por(_c.estado, siglaUf(e.uf));
       por(_c.pais, e.pais);
     });
   }
 
   Widget _campo(String rotulo, TextEditingController controle,
-      {bool obrigatorio = false, String? dica, TextInputType? teclado}) {
+      {bool obrigatorio = false,
+      String? dica,
+      TextInputType? teclado,
+      List<TextInputFormatter>? formatadores,
+      String? Function(String)? validar}) {
     return CampoIdv(
       rotulo: rotulo,
       controle: controle,
@@ -114,6 +120,8 @@ class _FormularioEnderecoState extends State<FormularioEndereco> {
       somenteLeitura: widget.somenteLeitura,
       dica: dica,
       teclado: teclado,
+      formatadores: formatadores,
+      validar: validar,
     );
   }
 
@@ -137,7 +145,11 @@ class _FormularioEnderecoState extends State<FormularioEndereco> {
           _campo('CEP', _c.cep,
               obrigatorio: true,
               dica: '00000-000',
-              teclado: TextInputType.number),
+              teclado: TextInputType.number,
+              formatadores: [_FormatoCep()],
+              validar: (v) => RegExp(r'^\d{5}-\d{3}$').hasMatch(v)
+                  ? null
+                  : 'CEP com 8 dígitos (00000-000)'),
           _campo('Número', _c.numero, dica: 'Ex.: 120'),
         ]),
         _campo('Logradouro', _c.logradouro,
@@ -148,10 +160,45 @@ class _FormularioEnderecoState extends State<FormularioEndereco> {
         ]),
         LinhaCamposIdv(children: [
           _campo('Cidade', _c.cidade, obrigatorio: true),
-          _campo('UF', _c.estado, obrigatorio: true, dica: 'SP'),
+          _campo('UF', _c.estado,
+              obrigatorio: true,
+              dica: 'SP',
+              // Só 2 letras, sempre maiúsculas.
+              formatadores: [
+                FilteringTextInputFormatter.allow(RegExp('[a-zA-Z]')),
+                LengthLimitingTextInputFormatter(2),
+                _Maiusculas(),
+              ],
+              validar: (v) => siglasUf.contains(v.toUpperCase())
+                  ? null
+                  : 'Use a sigla do estado (ex.: SP)'),
           _campo('País', _c.pais, obrigatorio: true),
         ]),
       ],
     );
   }
+}
+
+
+/// CEP: só números, com o hífen entrando sozinho (00000-000).
+class _FormatoCep extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    var d = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (d.length > 8) d = d.substring(0, 8);
+    final texto = d.length > 5 ? '${d.substring(0, 5)}-${d.substring(5)}' : d;
+    return TextEditingValue(
+      text: texto,
+      selection: TextSelection.collapsed(offset: texto.length),
+    );
+  }
+}
+
+/// UF sempre em maiúsculas.
+class _Maiusculas extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+          TextEditingValue oldValue, TextEditingValue newValue) =>
+      newValue.copyWith(text: newValue.text.toUpperCase());
 }

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:fabrica_software_app/models/cliente.dart';
 import 'package:provider/provider.dart';
 import 'package:fabrica_software_app/providers/clientes_provider.dart';
+import 'package:fabrica_software_app/providers/projetos_provider.dart';
 
 enum ClienteModalMode {
   view,
@@ -164,7 +165,9 @@ class _ClienteModalState extends State<ClienteModal> {
         _campo('Razão social', _razaoSocialController, obrigatorio: true),
         LinhaCamposIdv(children: [
           _campo('CNPJ', _cnpjController,
-              obrigatorio: true, dica: '00.000.000/0000-00'),
+              obrigatorio: true,
+              dica: '00.000.000/0000-00',
+              validar: (v) => cnpjValido(v) ? null : 'Informe um CNPJ válido'),
           _campo('Setor', _setorController, dica: 'Ex.: Varejo'),
         ]),
         const SizedBox(height: 6),
@@ -172,7 +175,10 @@ class _ClienteModalState extends State<ClienteModal> {
         _campo('E-mail', _emailController,
             obrigatorio: true,
             dica: 'contato@empresa.com',
-            teclado: TextInputType.emailAddress),
+            teclado: TextInputType.emailAddress,
+            validar: (v) => _emailRegex.hasMatch(v)
+                ? null
+                : 'Informe um e-mail válido'),
         LinhaCamposIdv(children: [
           _campo('Telefone', _telefoneController,
               dica: '(00) 00000-0000', teclado: TextInputType.phone),
@@ -184,7 +190,10 @@ class _ClienteModalState extends State<ClienteModal> {
   }
 
   Widget _campo(String rotulo, TextEditingController controle,
-      {bool obrigatorio = false, String? dica, TextInputType? teclado}) {
+      {bool obrigatorio = false,
+      String? dica,
+      TextInputType? teclado,
+      String? Function(String)? validar}) {
     return CampoIdv(
       rotulo: rotulo,
       controle: controle,
@@ -192,8 +201,11 @@ class _ClienteModalState extends State<ClienteModal> {
       somenteLeitura: _visualizando,
       dica: dica,
       teclado: teclado,
+      validar: validar,
     );
   }
+
+  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   Future<void> _submitClienteForm(VoidCallback onSuccess) async {
     // Cada aba valida o seu formulário; com erro, abre a aba dele.
@@ -220,8 +232,10 @@ class _ClienteModalState extends State<ClienteModal> {
       // 2) Cliente, já com o endereço.
       final data = {
         'razao_social': _razaoSocialController.text,
-        'cnpj': _cnpjController.text,
-        'email': _emailController.text,
+        // Sempre com máscara: o mesmo CNPJ com e sem máscara não pode virar
+        // dois clientes.
+        'cnpj': formatarCnpj(_cnpjController.text),
+        'email': _emailController.text.trim(),
         'telefone':
             _telefoneController.text.isEmpty ? null : _telefoneController.text,
         'setor': _setorController.text.isEmpty ? null : _setorController.text,
@@ -237,6 +251,7 @@ class _ClienteModalState extends State<ClienteModal> {
       } else {
         await context.read<ClientesProvider>().criarCliente(data);
       }
+      if (!mounted) return;
       onSuccess();
     } catch (e) {
       if (mounted)
@@ -247,20 +262,59 @@ class _ClienteModalState extends State<ClienteModal> {
   }
 
   Future<void> _deleteCliente(VoidCallback onSuccess) async {
-    setState(() {
-      _isClienteModalLoading = true;
-    });
+    // Cliente com projetos não pode ser excluído (os projetos ficariam sem
+    // cliente): avisa e mantém.
+    final qtd =
+        context.read<ProjetosProvider>().projetosDoCliente(widget.cliente!.id);
+    if (qtd > 0) {
+      avisar(
+          context,
+          'Este cliente tem ${qtd == 1 ? '1 projeto' : '$qtd projetos'}. '
+          'Exclua ou troque o cliente dos projetos antes.',
+          tipo: TipoAviso.info);
+      return;
+    }
+    setState(() => _isClienteModalLoading = true);
     try {
       await context
           .read<ClientesProvider>()
           .excluirCliente(widget.cliente!.id!);
+      if (!mounted) return;
       onSuccess();
     } catch (e) {
+      if (!mounted) return;
       avisar(context, 'Erro ao excluir cliente: $e', tipo: TipoAviso.erro);
     } finally {
-      setState(() {
-        _isClienteModalLoading = false;
-      });
+      if (mounted) setState(() => _isClienteModalLoading = false);
     }
   }
+}
+
+/// CNPJ com 14 dígitos e dígitos verificadores corretos (aceita com ou sem
+/// máscara).
+bool cnpjValido(String valor) {
+  final d = valor.replaceAll(RegExp(r'\D'), '');
+  if (d.length != 14 || RegExp(r'^(\d){13}$').hasMatch(d)) return false;
+  final n = d.split('').map(int.parse).toList();
+  int digito(int tamanho) {
+    final pesos = tamanho == 12
+        ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    var soma = 0;
+    for (var i = 0; i < tamanho; i++) {
+      soma += n[i] * pesos[i];
+    }
+    final resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  }
+
+  return digito(12) == n[12] && digito(13) == n[13];
+}
+
+/// 12345678000190 -> 12.345.678/0001-90 (fora de 14 dígitos, fica igual).
+String formatarCnpj(String valor) {
+  final d = valor.replaceAll(RegExp(r'\D'), '');
+  if (d.length != 14) return valor.trim();
+  return '${d.substring(0, 2)}.${d.substring(2, 5)}.${d.substring(5, 8)}/'
+      '${d.substring(8, 12)}-${d.substring(12)}';
 }
