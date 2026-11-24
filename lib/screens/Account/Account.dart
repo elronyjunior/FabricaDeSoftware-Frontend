@@ -83,6 +83,7 @@ class _AccountState extends State<Account> {
     await context
         .read<AuthProvider>()
         .atualizarPerfil(nome: salvo.nome, email: salvo.email);
+    if (!mounted) return;
     avisarApp('Perfil atualizado.', tipo: TipoAviso.sucesso);
   }
 
@@ -422,7 +423,8 @@ class _CartaoPerfilState extends State<_CartaoPerfil> {
     final auth = context.read<AuthProvider>();
     try {
       final escolhida = await FotoPerfilService.instance.escolher();
-      if (escolhida == null) return;
+      // O seletor de arquivo é assíncrono: a tela pode ter saído.
+      if (escolhida == null || !mounted) return;
       setState(() => _enviando = true);
       final foto = await FotoPerfilService.instance
           .salvar(id, escolhida.bytes, escolhida.nome);
@@ -678,6 +680,7 @@ class _PainelAlterarSenhaState extends State<_PainelAlterarSenha> {
     try {
       final confere = await AuthService.instance
           .conferirSenha(widget.usuario.email, _atual.text);
+      if (!mounted) return; // o painel pode ter sido fechado na espera
       if (!confere) {
         setState(() {
           _erroAtual = 'A senha atual não confere.';
