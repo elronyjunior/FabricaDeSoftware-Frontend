@@ -52,6 +52,36 @@ class _SecaoWidgetState extends State<SecaoWidget> {
     _sincronizarControladoresDeItens();
   }
 
+  // A key (localId) se mantém quando a IA retrabalha a seção, então o State é
+  // reaproveitado e os controllers ficariam com o texto antigo. Aqui eles são
+  // sincronizados com o conteúdo novo — só quando o valor externo mudou e é
+  // diferente do que está no campo, para não atrapalhar quem está digitando
+  // (o onChanged já manda o mesmo texto para o provider).
+  @override
+  void didUpdateWidget(covariant SecaoWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sincronizarTexto(_tituloCtrl, widget.secao.titulo);
+    _sincronizarTexto(_conteudoCtrl, widget.secao.conteudo);
+    final itensNovos = widget.secao.itens;
+    // Se a quantidade mudou, o build recria os controllers dos itens.
+    if (_itemCtrls.length == itensNovos.length) {
+      for (var i = 0; i < itensNovos.length; i++) {
+        _sincronizarTexto(_itemCtrls[i], itensNovos[i]);
+      }
+    }
+  }
+
+  void _sincronizarTexto(TextEditingController ctrl, String novo) {
+    // Compara com o texto do controller e não só antigo x novo: o provider
+    // muta a seção no lugar (antigo == novo) e mesmo assim o campo pode estar
+    // velho. Enquanto o usuário digita, o onChanged já deixa novo == ctrl.text.
+    if (ctrl.text == novo) return;
+    ctrl.value = TextEditingValue(
+      text: novo,
+      selection: TextSelection.collapsed(offset: novo.length),
+    );
+  }
+
   void _sincronizarControladoresDeItens() {
     final itens = widget.secao.itens;
     if (_itemCtrls.length == itens.length) return;

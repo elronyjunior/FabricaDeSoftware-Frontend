@@ -1,5 +1,6 @@
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -19,10 +20,11 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
   // Controladores
   final ScrollController _horizontalController = ScrollController();
 
-  // --- OTIMIZAÇÃO: Cache das Estatísticas ---
-  int? _cachedTotalP;
-  int? _cachedTotalF;
-  double? _cachedTaxa;
+  // Totais do rodapé. Recalculados a cada build (cada marcação notifica o
+  // provider), senão só mudavam depois de salvar. A conta é barata.
+  int _cachedTotalP = 0;
+  int _cachedTotalF = 0;
+  double _cachedTaxa = 0;
   
   void _calcularEstatisticas(List<dynamic> alunos) {
     int totalP = 0, totalF = 0, total = 0;
@@ -66,7 +68,19 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => ControlePresencaProvider()..carregarDados(widget.treinamentoId),
-      child: Scaffold(
+      // Consumer em volta do PopScope para saber se há presenças não salvas
+      // e pedir confirmação antes de sair (senão elas se perdiam em silêncio).
+      child: Consumer<ControlePresencaProvider>(
+        builder: (context, provider, scaffold) => PopScope(
+          canPop: !provider.temMudancasPendentes,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            final sair = await _confirmarSaidaSemSalvar(context);
+            if (sair == true && context.mounted) Navigator.of(context).pop();
+          },
+          child: scaffold!,
+        ),
+        child: Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -79,10 +93,7 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
                 ? Padding(
                     padding: const EdgeInsets.only(right: 20),
                     child: ElevatedButton.icon(
-                      onPressed: provider.isSaving ? null : () async {
-                        await provider.salvarAlteracoes();
-                        setState(() { _calcularEstatisticas(provider.alunos); });
-                      },
+                      onPressed: provider.isSaving ? null : () => _salvar(ctx, provider),
                       icon: const Icon(Icons.save, size: 18),
                       label: const Text("Salvar"),
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white, elevation: 0),
@@ -98,9 +109,7 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
             if (provider.isLoading) return const Center(child: CircularProgressIndicator());
             if (provider.error != null) return Center(child: Text(provider.error!, style: const TextStyle(color: Colors.red)));
 
-            if (_cachedTotalP == null && provider.alunos.isNotEmpty) {
-              _calcularEstatisticas(provider.alunos);
-            }
+            _calcularEstatisticas(provider.alunos);
             
             // Calcula largura total da tabela
             double totalTableWidth = widthAluno + widthStatus + widthBtnAdd + (provider.headersDias.length * widthDia);
@@ -124,7 +133,7 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
                         ElevatedButton.icon(
                           onPressed: () => _adicionarDia(context, provider), 
                           icon: const Icon(Icons.add, size: 18), 
-                          label: const Text("Adiconar Dia"),
+                          label: const Text("Adicionar dia"),
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEA580C), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16)),
                         ),
                         const SizedBox(width: 12),
@@ -227,7 +236,7 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
                                                         Text(aluno['email'], overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                                                       ]),
                                                     ),
-                                                    IconButton(icon: Icon(Icons.delete_outline, size: 18, color: Colors.grey[300]), onPressed: () => provider.removerAluno(widget.treinamentoId, aluno['rowIndex'])),
+                                                    IconButton(icon: Icon(Icons.delete_outline, size: 18, color: Colors.grey[300]), onPressed: () => _confirmarExclusaoAluno(context, provider, aluno)),
                                                   ]),
                                                 ),
                                               ),
@@ -281,11 +290,11 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
                   padding: const EdgeInsets.all(32),
                   child: Row(
                     children: [
-                      _buildStatCard("Taxa de Presença", "${(_cachedTaxa ?? 0).toInt()}%", Colors.black),
+                      _buildStatCard("Taxa de Presença", "${_cachedTaxa.toInt()}%", Colors.black),
                       const SizedBox(width: 20),
-                      _buildStatCard("Total de Presenças", (_cachedTotalP ?? 0).toString(), Colors.green),
+                      _buildStatCard("Total de Presenças", _cachedTotalP.toString(), Colors.green),
                       const SizedBox(width: 20),
-                      _buildStatCard("Total de Faltas", (_cachedTotalF ?? 0).toString(), Colors.red),
+                      _buildStatCard("Total de Faltas", _cachedTotalF.toString(), Colors.red),
                     ],
                   ),
                 )
@@ -293,6 +302,7 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
             );
           },
         ),
+      ),
       ),
     );
   }
@@ -322,17 +332,58 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
     ));
   }
 
-  Future<void> _adicionarDia(BuildContext context, dynamic provider) async {
-    final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2023), lastDate: DateTime(2030), builder: (context, child) => Theme(data: ThemeData.light().copyWith(primaryColor: Colors.blue), child: child!));
-    if (picked != null) provider.adicionarDia(widget.treinamentoId, DateFormat('dd/MM').format(picked));
+  // Salva e avisa o resultado (antes o bool de retorno era ignorado e o
+  // usuário não sabia se tinha salvo).
+  Future<void> _salvar(BuildContext context, ControlePresencaProvider provider) async {
+    final ok = await provider.salvarAlteracoes();
+    if (!mounted) return;
+    if (ok) {
+      avisarApp('Chamada salva.', tipo: TipoAviso.sucesso);
+    } else {
+      avisarApp(provider.ultimoErro ?? 'Não foi possível salvar a chamada.');
+    }
   }
 
-  Future<void> _showNovoAlunoDialog(BuildContext context, dynamic provider) async {
+  // Avisa o resultado das ações de adicionar/remover (o provider confere o
+  // status da resposta e devolve false com a mensagem em ultimoErro).
+  void _avisarResultado(ControlePresencaProvider provider, bool ok, String sucesso) {
+    if (!mounted) return;
+    if (ok) {
+      avisarApp(sucesso, tipo: TipoAviso.sucesso);
+    } else {
+      avisarApp(provider.ultimoErro ?? 'Não foi possível concluir a ação.');
+    }
+  }
+
+  Future<bool?> _confirmarSaidaSemSalvar(BuildContext context) {
+    return mostrarDialogo<bool>(
+      context: context,
+      builder: (ctx) => ConfirmacaoIdv(
+        titulo: 'Sair sem salvar?',
+        mensagem: 'Há presenças marcadas que ainda não foram salvas. Se sair agora, elas serão perdidas.',
+        rotuloAcao: 'Sair sem salvar',
+        aoConfirmar: () => Navigator.pop(ctx, true),
+      ),
+    );
+  }
+
+  Future<void> _adicionarDia(BuildContext context, ControlePresencaProvider provider) async {
+    final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2023), lastDate: DateTime(2030), builder: (context, child) => Theme(data: ThemeData.light().copyWith(primaryColor: Colors.blue), child: child!));
+    if (picked == null) return;
+    final ok = await provider.adicionarDia(widget.treinamentoId, DateFormat('dd/MM').format(picked));
+    _avisarResultado(provider, ok, 'Dia adicionado.');
+  }
+
+  Future<void> _showNovoAlunoDialog(BuildContext context, ControlePresencaProvider provider) async {
     final nomeCtrl = TextEditingController(); final emailCtrl = TextEditingController();
-    mostrarDialogo(context: context, builder: (ctx) => PainelIdv(
+    await mostrarDialogo(context: context, builder: (ctx) => PainelIdv(
       titulo: 'Novo aluno',
       rotuloAcao: 'Adicionar aluno',
-      aoConfirmar: () { Navigator.pop(ctx); provider.adicionarAluno(widget.treinamentoId, nomeCtrl.text, emailCtrl.text); },
+      aoConfirmar: () async {
+        Navigator.pop(ctx);
+        final ok = await provider.adicionarAluno(widget.treinamentoId, nomeCtrl.text, emailCtrl.text);
+        _avisarResultado(provider, ok, 'Aluno adicionado.');
+      },
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         CampoIdv(rotulo: 'Nome', controle: nomeCtrl, dica: 'Nome completo do aluno'),
         CampoIdv(rotulo: 'E-mail', controle: emailCtrl, dica: 'aluno@empresa.com', teclado: TextInputType.emailAddress),
@@ -340,12 +391,30 @@ class _ControlePresencaScreenState extends State<ControlePresencaScreen> {
     ));
   }
 
-  void _confirmarExclusaoDia(BuildContext context, dynamic provider, int index) {
+  void _confirmarExclusaoDia(BuildContext context, ControlePresencaProvider provider, int index) {
     mostrarDialogo(context: context, builder: (ctx) => ConfirmacaoIdv(
       titulo: 'Remover dia',
       mensagem: 'O dia e as presenças marcadas nele serão removidos. Essa ação não pode ser desfeita.',
       rotuloAcao: 'Remover dia',
-      aoConfirmar: () { Navigator.pop(ctx); provider.removerDia(widget.treinamentoId, index); },
+      aoConfirmar: () async {
+        Navigator.pop(ctx);
+        final ok = await provider.removerDia(widget.treinamentoId, index);
+        _avisarResultado(provider, ok, 'Dia removido.');
+      },
+    ));
+  }
+
+  // Remover aluno apagava direto, sem confirmação.
+  void _confirmarExclusaoAluno(BuildContext context, ControlePresencaProvider provider, dynamic aluno) {
+    mostrarDialogo(context: context, builder: (ctx) => ConfirmacaoIdv(
+      titulo: 'Remover aluno',
+      mensagem: '${aluno['nome']} e as presenças dele serão removidos. Essa ação não pode ser desfeita.',
+      rotuloAcao: 'Remover aluno',
+      aoConfirmar: () async {
+        Navigator.pop(ctx);
+        final ok = await provider.removerAluno(widget.treinamentoId, aluno['rowIndex']);
+        _avisarResultado(provider, ok, 'Aluno removido.');
+      },
     ));
   }
 }

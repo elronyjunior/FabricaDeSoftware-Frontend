@@ -62,7 +62,7 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
   }
 
   Future<void> _gerar() async {
-    if (_tipoSelecionado == null || _tituloController.text.isEmpty) {
+    if (_tipoSelecionado == null || _tituloController.text.trim().isEmpty) { // trim: só espaços não é título
       avisar(context, "Selecione um tipo e preencha o título", tipo: TipoAviso.info);
       return;
     }
@@ -78,7 +78,7 @@ class _ModalCriarDocIAState extends State<ModalCriarDocIA> {
       await _service.gerarDocumentoIA(
         projetoId: widget.projetoId,
         tipo: _tipoSelecionado!,
-        titulo: _tituloController.text,
+        titulo: _tituloController.text.trim(),
         descricao: _descricaoController.text,
         formato: _formatoSelecionado == 'Diagrama Mermaid' ? 'mermaid' : 'texto',
         onStatusUpdate: (stage) {

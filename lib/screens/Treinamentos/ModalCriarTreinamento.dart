@@ -57,9 +57,12 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
       _instrutorCtrl.text = t['instrutor'] ?? '';
       _cargaHorariaCtrl.text = t['duracao_horas']?.toString() ?? '';
       
-      // Ajusta Tipo (Garante que está na lista, senão default)
-      if (_tipos.contains(t['tipo_treinamento'])) {
-        _tipoSelecionado = t['tipo_treinamento'];
+      // Tipo fora da lista (cadastrado antes, ou pelo banco) virava "Técnico"
+      // em silêncio e era sobrescrito ao salvar. Agora entra como opção.
+      final tipoAtual = t['tipo_treinamento']?.toString().trim() ?? '';
+      if (tipoAtual.isNotEmpty) {
+        if (!_tipos.contains(tipoAtual)) _tipos.add(tipoAtual);
+        _tipoSelecionado = tipoAtual;
       }
 
       // Ajusta Datas
@@ -72,6 +75,17 @@ class _ModalCriarTreinamentoState extends State<ModalCriarTreinamento> {
         _dataTerminoCtrl.text = DateFormat('dd/MM/yyyy').format(_dataTermino!);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _nomeCtrl.dispose();
+    _descricaoCtrl.dispose();
+    _instrutorCtrl.dispose();
+    _cargaHorariaCtrl.dispose();
+    _dataInicioCtrl.dispose();
+    _dataTerminoCtrl.dispose();
+    super.dispose();
   }
 
   // Função de Salvar (Cria ou Edita)

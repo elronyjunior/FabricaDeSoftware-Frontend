@@ -281,15 +281,39 @@ class _Disponibilidade extends StatelessWidget {
 }
 
 /// Projetos que usam o recurso (busca ao abrir os detalhes).
-class _ProjetosDoRecurso extends StatelessWidget {
+// Stateful para guardar o future: criado no build, cada rebuild do modal
+// (digitar, trocar o switch) refazia o GET e piscava o carregando.
+class _ProjetosDoRecurso extends StatefulWidget {
   const _ProjetosDoRecurso({required this.recursoId});
   final int recursoId;
+
+  @override
+  State<_ProjetosDoRecurso> createState() => _ProjetosDoRecursoState();
+}
+
+class _ProjetosDoRecursoState extends State<_ProjetosDoRecurso> {
+  late Future<List<Map<String, dynamic>>> _projetos;
+
+  @override
+  void initState() {
+    super.initState();
+    _projetos = RecursosService.instance.projetosDoRecurso(widget.recursoId);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProjetosDoRecurso oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Só busca de novo se for outro recurso.
+    if (oldWidget.recursoId != widget.recursoId) {
+      _projetos = RecursosService.instance.projetosDoRecurso(widget.recursoId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final moeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: RecursosService.instance.projetosDoRecurso(recursoId),
+      future: _projetos,
       builder: (context, s) {
         if (s.connectionState != ConnectionState.done) {
           return const Padding(
