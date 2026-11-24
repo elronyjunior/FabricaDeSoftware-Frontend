@@ -42,8 +42,16 @@ class Projeto {
   // Getter para Status visual
   String get statusCalculado {
     if (dataFinal != null) return 'Concluído';
-    if (dataFinalPrevisto != null && DateTime.now().isAfter(dataFinalPrevisto!)) {
-      return 'Atrasado'; 
+    // Compara só o dia (sem horário): no próprio dia do prazo ainda está
+    // "Em processo"; atrasado só a partir do dia seguinte.
+    final previsto = dataFinalPrevisto;
+    if (previsto != null) {
+      // A data vem como meia-noite (às vezes em UTC): usa o ano/mês/dia
+      // como gravados, sem converter para o fuso local.
+      final dia = DateTime(previsto.year, previsto.month, previsto.day);
+      final agora = DateTime.now();
+      final hoje = DateTime(agora.year, agora.month, agora.day);
+      if (hoje.isAfter(dia)) return 'Atrasado';
     }
     return 'Em processo';
   }

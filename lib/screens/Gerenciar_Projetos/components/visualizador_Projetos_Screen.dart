@@ -2,6 +2,7 @@ import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_novo_projeto.dart';
 import 'package:fabrica_software_app/models/documento.dart';
 import 'package:fabrica_software_app/models/enums.dart';
 import 'package:fabrica_software_app/models/projeto.dart';
@@ -19,7 +20,9 @@ import 'package:fabrica_software_app/screens/Relatorio/components/pecas_relatori
 import 'package:fabrica_software_app/screens/Tests/Teste_modal.dart';
 import 'package:fabrica_software_app/screens/Treinamentos/ControlePresencaScreen.dart';
 import 'package:fabrica_software_app/screens/Treinamentos/ModalCriarTreinamento.dart';
+import 'package:fabrica_software_app/services/base_api_service.dart';
 import 'package:fabrica_software_app/services/documentos_service.dart';
+import 'package:fabrica_software_app/services/projeto_service.dart';
 import 'package:fabrica_software_app/services/recurso_projeto_service.dart';
 import 'package:fabrica_software_app/services/recursos_service.dart';
 import 'package:fabrica_software_app/services/teste_service.dart';
@@ -36,6 +39,8 @@ import 'package:provider/provider.dart';
 
 enum _Aba {
   resumo('Resumo'),
+  requisitos('Requisitos'),
+  tecnologias('Tecnologias'),
   recursos('Recursos'),
   testes('Testes'),
   artefatos('Artefatos'),
@@ -64,11 +69,18 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
   List<Teste> _testes = [];
   List<Documento> _documentos = [];
   List<Treinamento> _treinamentos = [];
+  // Linhas cruas das rotas /requisitos-projeto/projeto/:id e
+  // /tecnologias-projeto/projeto/:id (só leitura, não há model para elas).
+  List<Map<String, dynamic>> _requisitos = [];
+  List<Map<String, dynamic>> _tecnologias = [];
 
   /// Listas que não carregaram (mostra o aviso na aba delas).
   final Set<_Aba> _falhas = {};
 
-  Projeto get p => widget.projeto;
+  // Cópia do projeto que é recarregada do back depois de editar (antes era
+  // sempre o snapshot de widget.projeto e o cabeçalho/resumo ficavam velhos).
+  late Projeto _projeto = widget.projeto;
+  Projeto get p => _projeto;
 
   @override
   void initState() {
@@ -105,9 +117,21 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
       pegar(_Aba.testes, () => TesteService().getTestesByProjeto(id)),
       pegar(_Aba.artefatos, () => DocumentosService.instance.listarPorProjeto(id)),
       pegar(_Aba.treinamentos, () => TreinamentoService().getTreinamentos()),
+      pegar(_Aba.requisitos, () => _VinculosDoProjeto('/requisitos-projeto').doProjeto(id)),
+      pegar(_Aba.tecnologias, () => _VinculosDoProjeto('/tecnologias-projeto').doProjeto(id)),
+      _recarregarProjeto(id),
     ]);
     if (!mounted) return;
     setState(() {
+      final atualizado = r[7] as Projeto?;
+      if (atualizado != null) _projeto = atualizado;
+      _requisitos = (r[5] as List<Map<String, dynamic>>?) ?? [];
+      _requisitos.sort((a, b) => '${a['codigo_requisito'] ?? ''}'
+          .compareTo('${b['codigo_requisito'] ?? ''}'));
+      _tecnologias = (r[6] as List<Map<String, dynamic>>?) ?? [];
+      _tecnologias.sort((a, b) => '${a['tecnologia_nome'] ?? ''}'
+          .toLowerCase()
+          .compareTo('${b['tecnologia_nome'] ?? ''}'.toLowerCase()));
       _vinculos = [
         for (final v in (r[0] as List<RecursoProjeto>?) ?? <RecursoProjeto>[])
           if (v.projetoId == id) v
@@ -124,6 +148,55 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
       ];
       _carregando = false;
     });
+  }
+
+  /// Busca o projeto atualizado. Usa a lista (GET /projetos) porque só ela
+  /// traz o cliente_nome; o GET /projetos/:id devolve só a tabela projetos.
+  /// Se falhar, fica o que já está na tela (null = não muda nada).
+  Future<Projeto?> _recarregarProjeto(int id) async {
+    try {
+      final todos = await ProjetoService().getProjetos();
+      for (final x in todos) {
+        if (x.id == id) return x;
+      }
+      return await ProjetoService().getProjeto(id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Mesmo fluxo de edição do card do projeto (painel lateral).
+  Future<void> _editarProjeto() async {
+    await abrirModalNovoProjeto(context, projeto: p);
+    if (mounted) _carregar();
+  }
+
+  Future<void> _excluirProjeto() async {
+    final id = p.id;
+    if (id == null) return;
+    // Lido antes dos awaits (o context pode não valer mais depois).
+    final provider = context.read<ProjetosProvider>();
+    final confirmou = await mostrarDialogo<bool>(
+      context: context,
+      builder: (ctx) => ConfirmacaoIdv(
+        titulo: 'Excluir projeto',
+        mensagem: '${p.nomeProjeto} será excluído. Essa ação não pode ser desfeita.',
+        rotuloAcao: 'Excluir projeto',
+        aoConfirmar: () => Navigator.pop(ctx, true),
+      ),
+    );
+    if (confirmou != true) return;
+    try {
+      await provider.excluirProjeto(id);
+    } catch (e) {
+      avisarApp(e is ApiException && e.message.trim().isNotEmpty
+          ? e.message
+          : 'Não foi possível excluir o projeto.');
+      return;
+    }
+    avisarApp('Projeto excluído.', tipo: TipoAviso.sucesso);
+    // O projeto não existe mais: volta para a lista.
+    if (mounted) Navigator.pop(context);
   }
 
   Future<void> _abrirPagina(Widget pagina) async {
@@ -302,7 +375,12 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Cabecalho(projeto: p, desktop: desktop),
+          _Cabecalho(
+            projeto: p,
+            desktop: desktop,
+            aoEditar: _editarProjeto,
+            aoExcluir: _excluirProjeto,
+          ),
           SizedBox(height: desktop ? 36 : 20),
           AbasSublinhadas(
             rotulos: [for (final a in _Aba.values) a.rotulo],
@@ -324,6 +402,8 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
               ),
             switch (_aba) {
               _Aba.resumo => _resumo(desktop),
+              _Aba.requisitos => _abaRequisitos(),
+              _Aba.tecnologias => _abaTecnologias(),
               _Aba.recursos => _abaRecursos(),
               _Aba.testes => _abaTestes(desktop),
               _Aba.artefatos => _abaArtefatos(),
@@ -516,6 +596,72 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
     if (dias < 60) return dias == 1 ? '1 dia' : '$dias dias';
     final meses = (dias / 30).round();
     return '$meses meses ($dias dias)';
+  }
+
+  // ------------------------------------------------------------ Requisitos
+
+  static String _prioridade(dynamic v) => switch ('$v'.toLowerCase()) {
+        'baixa' => 'Baixa',
+        'media' => 'Média',
+        'alta' => 'Alta',
+        'critica' => 'Crítica',
+        _ => '—',
+      };
+
+  static String _aprovacao(dynamic v) {
+    final data = v == null ? null : DateTime.tryParse('$v');
+    return data == null ? 'Pendente' : dataCurta.format(data.toLocal());
+  }
+
+  Widget _abaRequisitos() {
+    return CartaoRelatorio(
+      titulo: 'Requisitos do projeto',
+      subtitulo: _requisitos.length == 1
+          ? '1 requisito'
+          : '${_requisitos.length} requisitos',
+      child: TabelaRelatorio(
+        colunas: const ['Código', 'Requisito', 'Tipo', 'Prioridade', 'Aprovação'],
+        pesos: const [1, 5, 2, 1, 2],
+        vazio: 'Nenhum requisito vinculado a este projeto.',
+        linhas: [
+          for (final r in _requisitos)
+            [
+              CelulaRelatorio(_ou(r['codigo_requisito']?.toString(), '—'), forte: true),
+              CelulaRelatorio(_ou(r['descricao']?.toString(), 'Sem descrição')),
+              CelulaRelatorio(_ou(r['tipo']?.toString(), '—')),
+              CelulaRelatorio(_prioridade(r['prioridade'])),
+              CelulaRelatorio(_aprovacao(r['data_aprovacao'])),
+            ],
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------- Tecnologias
+
+  Widget _abaTecnologias() {
+    return CartaoRelatorio(
+      titulo: 'Tecnologias do projeto',
+      subtitulo: _tecnologias.length == 1
+          ? '1 tecnologia'
+          : '${_tecnologias.length} tecnologias',
+      child: TabelaRelatorio(
+        colunas: const ['Tecnologia', 'Categoria', 'Aprovação'],
+        pesos: const [4, 3, 2],
+        vazio: 'Nenhuma tecnologia vinculada a este projeto.',
+        linhas: [
+          for (final t in _tecnologias)
+            [
+              CelulaRelatorio(
+                  _ou(t['tecnologia_nome']?.toString(),
+                      'Tecnologia #${t['tecnologia_id']}'),
+                  forte: true),
+              CelulaRelatorio(_ou(t['categoria']?.toString(), '—')),
+              CelulaRelatorio(_aprovacao(t['data_aprovacao'])),
+            ],
+        ],
+      ),
+    );
   }
 
   // -------------------------------------------------------------- Recursos
@@ -733,16 +879,32 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
 String _ou(String? v, String vazio) =>
     (v == null || v.trim().isEmpty) ? vazio : v.trim();
 
+/// Leitura das rotas "por projeto" de requisitos e tecnologias. Fica aqui
+/// porque só esta tela usa e não há model para as linhas (vêm com JOIN).
+class _VinculosDoProjeto extends BaseApiService {
+  _VinculosDoProjeto(super.endpoint);
+
+  Future<List<Map<String, dynamic>>> doProjeto(int projetoId) =>
+      getAll<Map<String, dynamic>>((json) => json, path: '/projeto/$projetoId');
+}
+
 // =====================================================================
 // Peças da tela
 // =====================================================================
 
-/// Voltar, nome do projeto, cliente e status.
+/// Voltar, nome do projeto, cliente, status e as ações (editar/excluir).
 class _Cabecalho extends StatelessWidget {
-  const _Cabecalho({required this.projeto, required this.desktop});
+  const _Cabecalho({
+    required this.projeto,
+    required this.desktop,
+    required this.aoEditar,
+    required this.aoExcluir,
+  });
 
   final Projeto projeto;
   final bool desktop;
+  final VoidCallback aoEditar;
+  final VoidCallback aoExcluir;
 
   @override
   Widget build(BuildContext context) {
@@ -794,6 +956,37 @@ class _Cabecalho extends StatelessWidget {
                     style: StyleProjetos.cardCliente,
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Ações do projeto: no desktop o editar vai com rótulo; no celular,
+        // só ícones (com dica) para não apertar o título.
+        Padding(
+          padding: EdgeInsets.only(top: desktop ? 6 : 0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (desktop)
+                BotaoSecundarioIdv(
+                  rotulo: 'Editar projeto',
+                  icone: FontAwesomeIcons.penToSquare,
+                  aoTocar: aoEditar,
+                )
+              else
+                IconButton(
+                  tooltip: 'Editar projeto',
+                  onPressed: aoEditar,
+                  icon: const FaIcon(FontAwesomeIcons.penToSquare,
+                      size: 18, color: StyleProjetos.azulEscuro),
+                ),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Excluir projeto',
+                onPressed: aoExcluir,
+                icon: const FaIcon(FontAwesomeIcons.trashCan,
+                    size: 18, color: Color(0xFFD62A1E)),
               ),
             ],
           ),

@@ -1,3 +1,4 @@
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_novo_projeto.dart';
@@ -69,19 +70,13 @@ class _ProjectCardState extends State<ProjectCard> {
   }
 
   void _excluir() {
+    // Pega o provider antes: o card some da lista quando a exclusão termina.
+    final provider = context.read<ProjetosProvider>();
     mostrarDialogo(
       context: context,
-      builder: (ctx) => ConfirmacaoIdv(
-        titulo: 'Excluir projeto',
-        mensagem: '"${widget.projeto.nomeProjeto}" será excluído. '
-            'Essa ação não pode ser desfeita.',
-        rotuloAcao: 'Excluir projeto',
-        aoConfirmar: () async {
-          Navigator.pop(ctx);
-          await context
-              .read<ProjetosProvider>()
-              .excluirProjeto(widget.projeto.id ?? 0);
-        },
+      builder: (ctx) => _ConfirmarExclusaoProjeto(
+        projeto: widget.projeto,
+        provider: provider,
       ),
     );
   }
@@ -463,6 +458,53 @@ class _AcaoState extends State<_Acao> {
           ),
         ),
       ),
+    );
+  }
+}
+
+
+/// Confirmação de exclusão que fica "carregando" enquanto exclui e só fecha
+/// quando deu certo (na falha continua aberta e avisa o erro).
+class _ConfirmarExclusaoProjeto extends StatefulWidget {
+  const _ConfirmarExclusaoProjeto(
+      {required this.projeto, required this.provider});
+
+  final Projeto projeto;
+  final ProjetosProvider provider;
+
+  @override
+  State<_ConfirmarExclusaoProjeto> createState() =>
+      _ConfirmarExclusaoProjetoState();
+}
+
+class _ConfirmarExclusaoProjetoState extends State<_ConfirmarExclusaoProjeto> {
+  bool _excluindo = false;
+
+  Future<void> _confirmar() async {
+    final id = widget.projeto.id;
+    if (id == null) return;
+    setState(() => _excluindo = true);
+    try {
+      await widget.provider.excluirProjeto(id);
+      if (!mounted) return;
+      Navigator.pop(context);
+      avisarApp('Projeto excluído.', tipo: TipoAviso.sucesso);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _excluindo = false);
+      avisarApp(e.toString(), tipo: TipoAviso.erro);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ConfirmacaoIdv(
+      titulo: 'Excluir projeto',
+      mensagem: '"${widget.projeto.nomeProjeto}" será excluído. '
+          'Essa ação não pode ser desfeita.',
+      rotuloAcao: 'Excluir projeto',
+      carregando: _excluindo,
+      aoConfirmar: _excluindo ? null : _confirmar,
     );
   }
 }
