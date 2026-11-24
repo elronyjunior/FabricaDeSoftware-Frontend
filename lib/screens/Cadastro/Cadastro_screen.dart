@@ -81,7 +81,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
 
   void _mostrarErro(String mensagem) {
     if (!mounted) return;
-    avisar(context, mensagem, tipo: TipoAviso.info);
+    avisar(context, mensagem, tipo: TipoAviso.erro);
   }
 
   // ---------------- UI ----------------

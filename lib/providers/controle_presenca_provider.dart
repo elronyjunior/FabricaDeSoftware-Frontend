@@ -31,6 +31,11 @@ class ControlePresencaProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
   String? get error => _error;
+  // Erro da última ação (salvar, adicionar/remover). Fica separado de
+  // [error] porque [error] troca a tabela inteira pela mensagem — uma falha
+  // ao salvar não pode esconder as presenças marcadas.
+  String? _ultimoErro;
+  String? get ultimoErro => _ultimoErro;
   List<String> get headersDias => _headersDias;
   List<dynamic> get alunos => _alunos;
   bool get temMudancasPendentes => _mudancasLocais.isNotEmpty;
@@ -89,6 +94,7 @@ class ControlePresencaProvider with ChangeNotifier {
   Future<bool> salvarAlteracoes() async {
     if (_mudancasLocais.isEmpty) return true;
     _isSaving = true;
+    _ultimoErro = null;
     notifyListeners();
 
     try {
@@ -104,11 +110,11 @@ class ControlePresencaProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         _mudancasLocais.clear();
         return true;
-      } else {
-        throw Exception("Falha ao salvar");
       }
+      _ultimoErro = 'Não foi possível salvar a chamada (status ${response.statusCode}).';
+      return false;
     } catch (e) {
-      _error = "Erro ao salvar: $e";
+      _ultimoErro = 'Não foi possível salvar a chamada. Verifique a conexão.';
       return false;
     } finally {
       _isSaving = false;
@@ -116,87 +122,108 @@ class ControlePresencaProvider with ChangeNotifier {
     }
   }
 
-  // Adicionar Dia
-  Future<void> adicionarDia(int treinamentoId, String dataFormatada) async {
+  // Adicionar/remover dia ou aluno muda a planilha e recarrega tudo, e as
+  // mudanças locais são chaveadas por rowIndex/diaIndex — que mudam de
+  // posição quando uma linha ou coluna entra/sai. Reaplicar depois seria
+  // arriscado (marcaria a presença no aluno/dia errado), então o mais seguro
+  // é salvar as pendentes ANTES. Se o salvamento falhar, a ação é cancelada
+  // e nada do que foi marcado se perde.
+  Future<bool> _salvarPendentesAntes() async {
+    if (_mudancasLocais.isEmpty) return true;
+    return salvarAlteracoes();
+  }
+
+  // Executa uma ação que altera a estrutura da planilha: salva as pendentes,
+  // chama a API, confere o status e recarrega. Retorna false com
+  // [ultimoErro] preenchido em qualquer falha.
+  Future<bool> _alterarEstrutura(
+    int treinamentoId,
+    Future<http.Response> Function(String? token) chamada,
+    String mensagemErro,
+  ) async {
+    if (!await _salvarPendentesAntes()) return false;
     _isLoading = true;
+    _ultimoErro = null;
     notifyListeners();
     try {
       final token = await AuthService.instance.token;
-      await http.post(
+      final response = await chamada(token);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _ultimoErro = '$mensagemErro (status ${response.statusCode}).';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _ultimoErro = '$mensagemErro. Verifique a conexão.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+    if (_disposed) return true;
+    await carregarDados(treinamentoId);
+    return _error == null;
+  }
+
+  Map<String, String> _headersJson(String? token) {
+    final headers = ApiConfig.getAuthHeaders(token);
+    headers['Content-Type'] = 'application/json';
+    return headers;
+  }
+
+  // Adicionar Dia
+  Future<bool> adicionarDia(int treinamentoId, String dataFormatada) {
+    return _alterarEstrutura(
+      treinamentoId,
+      (token) => http.post(
         Uri.parse('${ApiConfig.baseUrl}/treinamentos/dia'),
         headers: ApiConfig.getAuthHeaders(token),
         body: jsonEncode({"sheetId": _sheetId, "data": dataFormatada}),
-      );
-      if (!_disposed) await carregarDados(treinamentoId); 
-    } catch (e) {
-      _error = "Erro ao adicionar dia";
-      _isLoading = false;
-      notifyListeners();
-    }
+      ),
+      'Não foi possível adicionar o dia',
+    );
   }
 
   // Adicionar Aluno
-  Future<void> adicionarAluno(int treinamentoId, String nome, String email) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final token = await AuthService.instance.token;
-      await http.post(
+  Future<bool> adicionarAluno(int treinamentoId, String nome, String email) {
+    return _alterarEstrutura(
+      treinamentoId,
+      (token) => http.post(
         Uri.parse('${ApiConfig.baseUrl}/treinamentos/aluno'),
         headers: ApiConfig.getAuthHeaders(token),
         body: jsonEncode({"sheetId": _sheetId, "nome": nome, "email": email}),
-      );
-      if (!_disposed) await carregarDados(treinamentoId);
-    } catch (e) {
-      _error = "Erro ao adicionar aluno";
-      _isLoading = false;
-      notifyListeners();
-    }
+      ),
+      'Não foi possível adicionar o aluno',
+    );
   }
 
   // Remover Dia
-  Future<void> removerDia(int treinamentoId, int index) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final token = await AuthService.instance.token;
-      final headers = ApiConfig.getAuthHeaders(token);
-      headers['Content-Type'] = 'application/json'; 
-      await http.delete(
+  Future<bool> removerDia(int treinamentoId, int index) {
+    return _alterarEstrutura(
+      treinamentoId,
+      (token) => http.delete(
         Uri.parse('${ApiConfig.baseUrl}/treinamentos/dia').replace(queryParameters: {
           'sheetId': _sheetId,
           'diaIndex': index.toString(),
         }),
-        headers: headers,
-      );
-      if (!_disposed) await carregarDados(treinamentoId);
-    } catch (e) {
-      _error = "Erro ao remover dia: $e";
-      _isLoading = false;
-      notifyListeners();
-    }
+        headers: _headersJson(token),
+      ),
+      'Não foi possível remover o dia',
+    );
   }
 
   // Remover Aluno
-  Future<void> removerAluno(int treinamentoId, int rowIndex) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final token = await AuthService.instance.token;
-      final headers = ApiConfig.getAuthHeaders(token);
-      headers['Content-Type'] = 'application/json';
-      await http.delete(
+  Future<bool> removerAluno(int treinamentoId, int rowIndex) {
+    return _alterarEstrutura(
+      treinamentoId,
+      (token) => http.delete(
         Uri.parse('${ApiConfig.baseUrl}/treinamentos/aluno').replace(queryParameters: {
           'sheetId': _sheetId,
           'rowIndex': rowIndex.toString(),
         }),
-        headers: headers,
-      );
-      if (!_disposed) await carregarDados(treinamentoId);
-    } catch (e) {
-      _error = "Erro ao remover aluno: $e";
-      _isLoading = false;
-      notifyListeners();
-    }
+        headers: _headersJson(token),
+      ),
+      'Não foi possível remover o aluno',
+    );
   }
 }

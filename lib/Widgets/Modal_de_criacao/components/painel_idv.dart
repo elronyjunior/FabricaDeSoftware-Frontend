@@ -70,6 +70,9 @@ class PainelIdv extends StatelessWidget {
     this.largura = 600,
     this.aoFechar,
     this.acoesExtras = const [],
+    this.abas,
+    this.abaAtual = 0,
+    this.aoTrocarAba,
   });
 
   final String titulo;
@@ -95,11 +98,16 @@ class PainelIdv extends StatelessWidget {
   /// Botões à esquerda do rodapé (ex.: "Editar endereço").
   final List<Widget> acoesExtras;
 
+  /// Abas abaixo do cabeçalho, como no Novo projeto (o [child] é o conteúdo
+  /// da aba [abaAtual]).
+  final List<String>? abas;
+  final int abaAtual;
+  final ValueChanged<int>? aoTrocarAba;
+
   @override
   Widget build(BuildContext context) {
     final tela = MediaQuery.of(context).size;
-    final larguraPainel =
-        largura.clamp(0.0, tela.width - 32).toDouble();
+    final larguraPainel = largura.clamp(0.0, tela.width - 32).toDouble();
     final fechar = aoFechar ?? () => Navigator.pop(context);
 
     final painel = SizedBox(
@@ -120,9 +128,20 @@ class PainelIdv extends StatelessWidget {
                   aoFechar: carregando ? null : fechar,
                 ),
                 const Divider(height: 1, color: _borda),
+                if (abas != null)
+                  Padding(
+                    // Faixa branca embaixo das abas (fora da rolagem), como no
+                    // Novo projeto: o conteúdo some antes de encostar nelas.
+                    padding: const EdgeInsets.fromLTRB(28, 24, 28, 8),
+                    child: AbasIdv(
+                      rotulos: abas!,
+                      atual: abaAtual,
+                      aoTocar: carregando ? null : aoTrocarAba,
+                    ),
+                  ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
+                    padding: EdgeInsets.fromLTRB(28, abas != null ? 16 : 24, 28, 28),
                     child: child,
                   ),
                 ),
@@ -340,62 +359,61 @@ class ConfirmacaoIdv extends StatelessWidget {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(StyleProjetos.sidebarAbertaRaio)),
+      // Sem AvisosIdv aqui: o Stack dele se estica até a tela toda (o cartão
+      // ficava do tamanho da janela). Os avisos vão para os do app.
       child: Theme(
         data: temaIdv(Theme.of(context)),
-        child: AvisosIdv(
-          child: SizedBox(
-            width: 460,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 28, 28, 22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: cor.withOpacity(0.1),
-                      shape: BoxShape.circle,
+        child: SizedBox(
+          width: 460,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 28, 28, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: cor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                      perigo
+                          ? FontAwesomeIcons.trashCan
+                          : Icons.help_outline_rounded,
+                      size: 19,
+                      color: cor),
+                ),
+                const SizedBox(height: 16),
+                Text(titulo,
+                    style: GoogleFonts.inter(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: StyleProjetos.texto,
+                        letterSpacing: -0.2)),
+                const SizedBox(height: 8),
+                Text(mensagem,
+                    style: fonteIdv(
+                        cor: StyleProjetos.textoSecundario, altura: 1.45)),
+                const SizedBox(height: 26),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    BotaoSecundarioIdv(
+                      rotulo: 'Cancelar',
+                      aoTocar: carregando ? null : () => Navigator.pop(context),
                     ),
-                    child: Icon(
-                        perigo
-                            ? FontAwesomeIcons.trashCan
-                            : Icons.help_outline_rounded,
-                        size: 19,
-                        color: cor),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(titulo,
-                      style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: StyleProjetos.texto,
-                          letterSpacing: -0.2)),
-                  const SizedBox(height: 8),
-                  Text(mensagem,
-                      style: fonteIdv(
-                          cor: StyleProjetos.textoSecundario, altura: 1.45)),
-                  const SizedBox(height: 26),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      BotaoSecundarioIdv(
-                        rotulo: 'Cancelar',
-                        aoTocar:
-                            carregando ? null : () => Navigator.pop(context),
-                      ),
-                      const SizedBox(width: 12),
-                      BotaoPrincipalIdv(
-                        rotulo: rotuloAcao,
-                        aoTocar: aoConfirmar,
-                        carregando: carregando,
-                        perigo: perigo,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 12),
+                    BotaoPrincipalIdv(
+                      rotulo: rotuloAcao,
+                      aoTocar: aoConfirmar,
+                      carregando: carregando,
+                      perigo: perigo,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -434,7 +452,8 @@ class RotuloIdv extends StatelessWidget {
 
 /// Decoração dos campos de texto da IDV (fundo claro, borda fina, laranja
 /// no foco e o erro embaixo da caixa).
-InputDecoration decoracaoCampoIdv({String? dica, Widget? sufixo, Widget? prefixo}) {
+InputDecoration decoracaoCampoIdv(
+    {String? dica, Widget? sufixo, Widget? prefixo}) {
   OutlineInputBorder borda(Color cor, [double largura = 1]) =>
       OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -521,7 +540,8 @@ class CampoIdv extends StatelessWidget {
             style: fonteIdv(),
             cursorColor: CoresIdv.azul,
             decoration: decoracaoCampoIdv(
-              dica: somenteLeitura && (valorInicial ?? controle?.text ?? '').isEmpty
+              dica: somenteLeitura &&
+                      (valorInicial ?? controle?.text ?? '').isEmpty
                   ? 'Não informado'
                   : dica,
               sufixo: sufixo,
@@ -590,10 +610,113 @@ class SecaoIdv extends StatelessWidget {
           if (descricao != null) ...[
             const SizedBox(height: 4),
             Text(descricao!,
-                style: fonteIdv(
-                    tamanho: 13, cor: StyleProjetos.textoSecundario)),
+                style:
+                    fonteIdv(tamanho: 13, cor: StyleProjetos.textoSecundario)),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Barra de abas da IDV (Novo projeto, Cliente): a aba escolhida em
+/// azul-escuro. Cada aba ocupa a largura proporcional ao texto, então todas
+/// usam o mesmo tamanho de letra (em telas estreitas, todas diminuem juntas).
+class AbasIdv extends StatelessWidget {
+  const AbasIdv({
+    super.key,
+    required this.rotulos,
+    required this.atual,
+    required this.aoTocar,
+  });
+
+  final List<String> rotulos;
+  final int atual;
+  final ValueChanged<int>? aoTocar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEF0F6),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: LayoutBuilder(builder: (context, c) {
+        // Largura que as abas precisam com a letra cheia; se não couber,
+        // a escala vale para todas (nenhuma fica menor que as outras).
+        final estilo = GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600);
+        double medir(String t) {
+          final tp = TextPainter(
+            text: TextSpan(text: t, style: estilo),
+            textDirection: TextDirection.ltr,
+            maxLines: 1,
+          )..layout();
+          return tp.width + 32;
+        }
+
+        final larguras = [for (final r in rotulos) medir(r)];
+        final total = larguras.fold<double>(0, (a, b) => a + b);
+        final escala = total > c.maxWidth ? c.maxWidth / total : 1.0;
+        return Row(
+          children: [
+            for (var i = 0; i < rotulos.length; i++)
+              Expanded(
+                flex: (larguras[i] * 10).round(),
+                child: _Aba(
+                  rotulo: rotulos[i],
+                  selecionada: i == atual,
+                  tamanho: 15 * escala,
+                  onTap: aoTocar == null ? null : () => aoTocar!(i),
+                ),
+              ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+class _Aba extends StatelessWidget {
+  const _Aba({
+    required this.rotulo,
+    required this.selecionada,
+    required this.tamanho,
+    required this.onTap,
+  });
+
+  final String rotulo;
+  final bool selecionada;
+  final double tamanho;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selecionada ? StyleProjetos.azulEscuro : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            rotulo,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.clip,
+            style: GoogleFonts.inter(
+              fontSize: tamanho,
+              fontWeight: selecionada ? FontWeight.w600 : FontWeight.w500,
+              color: selecionada ? Colors.white : StyleProjetos.textoSecundario,
+            ),
+          ),
+        ),
       ),
     );
   }

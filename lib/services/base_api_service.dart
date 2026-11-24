@@ -19,6 +19,38 @@ class BaseApiService {
   
   BaseApiService(this.endpoint);
 
+  /// Chamado quando o servidor diz que o token expirou (ligado no main.dart
+  /// para sair da conta e voltar ao login).
+  static void Function()? aoSessaoExpirada;
+
+  /// O back responde 401, ou 403 com "Token inválido ou expirado".
+  static bool sessaoExpirou(http.Response response) {
+    if (response.statusCode == 401) return true;
+    if (response.statusCode != 403) return false;
+    return mensagemDoCorpo(response)?.toLowerCase().contains('token') ?? false;
+  }
+
+  /// Mensagem de erro do corpo: o back usa `message` ou `error`. Corpo que
+  /// não é JSON (ex.: página HTML de proxy) devolve null em vez de estourar.
+  static String? mensagemDoCorpo(http.Response response) {
+    try {
+      final corpo = jsonDecode(utf8.decode(response.bodyBytes));
+      if (corpo is Map) {
+        final msg = corpo['message'] ?? corpo['error'];
+        if (msg != null && msg.toString().trim().isNotEmpty) {
+          return msg.toString();
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Avisa o app (uma vez por resposta) e lança o erro de sessão expirada.
+  static Never lancarSessaoExpirada() {
+    aoSessaoExpirada?.call();
+    throw ApiException('Sua sessão expirou. Entre de novo.', 401);
+  }
+
   @protected
   Uri buildUri([String? path]) {
     final url = '${ApiConfig.baseUrl}$endpoint${path ?? ''}';
@@ -37,25 +69,27 @@ class BaseApiService {
   @protected
   Future<T> handleResponse<T>(http.Response response, T Function(dynamic json) parser) async {
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      dynamic json;
       try {
-        final json = jsonDecode(response.body);
-        return parser(json);
-      } catch (e) {
-        throw ApiException('Erro ao processar resposta do servidor: ${e.toString()}');
+        final texto = utf8.decode(response.bodyBytes);
+        json = texto.trim().isEmpty ? null : jsonDecode(texto);
+      } on FormatException {
+        // Resposta que não é JSON: mensagem amigável em vez do erro cru.
+        throw ApiException('O servidor respondeu num formato inesperado.');
       }
-    } else if (response.statusCode == 401) {
-      throw ApiException('Não autorizado. Faça login novamente.', 401);
-    } else if (response.statusCode == 403) {
-      throw ApiException('Sem permissão para acessar este recurso.', 403);
-    } else if (response.statusCode == 404) {
-      throw ApiException('Recurso não encontrado.', 404);
-    } else if (response.statusCode >= 500) {
-      throw ApiException('Erro interno do servidor.', response.statusCode);
-    } else {
-      final body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
-      final message = body?['message'] ?? 'Erro na requisição';
-      throw ApiException(message, response.statusCode);
+      return parser(json);
     }
+    if (sessaoExpirou(response)) lancarSessaoExpirada();
+    final doCorpo = mensagemDoCorpo(response);
+    if (response.statusCode == 403) {
+      throw ApiException(doCorpo ?? 'Sem permissão para acessar este recurso.', 403);
+    } else if (response.statusCode == 404) {
+      throw ApiException(doCorpo ?? 'Recurso não encontrado.', 404);
+    } else if (response.statusCode >= 500) {
+      // Erro 5xx pode trazer detalhe técnico do banco: mostra o genérico.
+      throw ApiException('Erro interno do servidor.', response.statusCode);
+    }
+    throw ApiException(doCorpo ?? 'Erro na requisição', response.statusCode);
   }
 
   // Métodos HTTP diretos para testes
@@ -63,7 +97,7 @@ class BaseApiService {
     return _executeWithRetry(() async => await http.get(
       buildUri(path),
       headers: await getHeaders(),
-    ));
+    ), idempotente: true);
   }
 
   Future<http.Response> post(String path, dynamic data) async {
@@ -91,26 +125,34 @@ class BaseApiService {
 
   static const _maxRetries = 2;
 
-  Future<http.Response> _executeWithRetry(Future<http.Response> Function() request) async {
+  /// Só repete em falha de rede quando [idempotente] (GET): repetir um
+  /// POST/PUT/DELETE que talvez já tenha chegado ao servidor duplica registros.
+  Future<http.Response> _executeWithRetry(
+      Future<http.Response> Function() request,
+      {bool idempotente = false}) async {
     int retries = 0;
+    var tentouRenovar = false;
     while (true) {
+      final http.Response response;
       try {
-        final response = await request();
-        if (response.statusCode == 401 && retries < _maxRetries) {
-          // Token pode ter expirado, tentar refresh
-          final refreshed = await AuthService.instance.refreshToken();
-          if (refreshed) {
-            retries++;
-            continue;
-          }
-        }
-        return response;
+        response = await request();
       } catch (e) {
-        if (retries >= _maxRetries) {
-          rethrow;
-        }
+        if (!idempotente || retries >= _maxRetries) rethrow;
         retries++;
+        continue;
       }
+      if (sessaoExpirou(response)) {
+        // Token recusado: o pedido não foi processado, então dá para
+        // reenviar (mesmo POST) uma vez se o refresh der certo.
+        if (!tentouRenovar) {
+          tentouRenovar = true;
+          final renovou =
+              await AuthService.instance.refreshToken().catchError((_) => false);
+          if (renovou) continue;
+        }
+        lancarSessaoExpirada();
+      }
+      return response;
     }
   }
 
@@ -118,7 +160,7 @@ class BaseApiService {
     final response = await _executeWithRetry(() async => await http.get(
       buildUri(path),
       headers: await getHeaders(),
-    ));
+    ), idempotente: true);
 
     return handleResponse(response, (json) {
       if (json is! List) throw ApiException('Resposta inválida do servidor');
@@ -130,7 +172,7 @@ class BaseApiService {
     final response = await _executeWithRetry(() async => await http.get(
       buildUri('/$id'),
       headers: await getHeaders(),
-    ));
+    ), idempotente: true);
 
     return handleResponse(response, (json) {
       if (json is! Map<String, dynamic>) {
@@ -179,9 +221,8 @@ class BaseApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return;
     } else {
-      final body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
-      final message = body?['message'] ?? 'Erro ao excluir';
-      throw ApiException(message, response.statusCode);
+      throw ApiException(
+          mensagemDoCorpo(response) ?? 'Erro ao excluir', response.statusCode);
     }
   }
 }

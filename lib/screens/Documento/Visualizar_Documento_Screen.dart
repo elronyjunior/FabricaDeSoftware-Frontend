@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/painel_idv.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
@@ -94,12 +95,17 @@ class _VisualizarDocumentoScreenState extends State<VisualizarDocumentoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Carregando/erro também ganham a AppBar com voltar (antes não havia como
+    // sair da tela se o documento travasse ou desse erro).
     if (_carregando) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(appBar: _appBarSimples(context), body: const Center(child: CircularProgressIndicator()));
     }
 
     if (_erro != null) {
-      return Scaffold(body: Center(child: Text(_erro!, style: TextStyle(color: Colors.red.shade700))));
+      return Scaffold(
+        appBar: _appBarSimples(context),
+        body: Center(child: Text(_erro!, style: TextStyle(color: Colors.red.shade700))),
+      );
     }
 
     if (_conteudoDiagrama != null) {
@@ -112,6 +118,23 @@ class _VisualizarDocumentoScreenState extends State<VisualizarDocumentoScreen> {
         ChangeNotifierProvider.value(value: _editorProvider!),
       ],
       child: _VisualizarDocumentoBody(nomeArquivo: widget.nomeArquivo, arquivoUrl: widget.arquivoUrl),
+    );
+  }
+
+  // Mesmo padrão da AppBar do estado normal (fundo branco, seta preta).
+  PreferredSizeWidget _appBarSimples(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+        onPressed: () => Navigator.maybePop(context),
+      ),
+      title: Text(
+        widget.nomeArquivo,
+        style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }
@@ -132,7 +155,16 @@ class _VisualizarDiagramaMermaidBody extends StatelessWidget {
     final atores = (conteudo['atores'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
     final mermaid = conteudo['mermaid'] as String?;
     final imagemBase64 = conteudo['imagem_base64'] as String?;
-    final imagemBytes = imagemBase64 != null ? base64Decode(imagemBase64) : null;
+    // base64 corrompido lançava FormatException dentro do build (tela
+    // vermelha). Com null, cai na mensagem "Não foi possível carregar...".
+    Uint8List? imagemBytes;
+    if (imagemBase64 != null) {
+      try {
+        imagemBytes = base64Decode(imagemBase64);
+      } catch (_) {
+        imagemBytes = null;
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.grey.shade300,
@@ -186,7 +218,13 @@ class _VisualizarDiagramaMermaidBody extends StatelessWidget {
                         minScale: 0.5,
                         maxScale: 4,
                         boundaryMargin: const EdgeInsets.all(40),
-                        child: Center(child: Image.memory(imagemBytes)),
+                        child: Center(
+                          child: Image.memory(
+                            imagemBytes,
+                            // Bytes que não são uma imagem válida: mostra o aviso no lugar.
+                            errorBuilder: (_, __, ___) => Text('Não foi possível carregar a imagem do diagrama.', style: TextStyle(color: Colors.grey.shade600)),
+                          ),
+                        ),
                       ),
                     )
                   else

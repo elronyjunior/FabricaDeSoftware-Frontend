@@ -1,16 +1,3 @@
-enum NivelUsuario {
-  admin,
-  gerente,
-  colaborador;
-
-  static NivelUsuario fromString(String value) {
-    return NivelUsuario.values.firstWhere(
-      (e) => e.toString().split('.').last == value,
-      orElse: () => NivelUsuario.colaborador,
-    );
-  }
-}
-
 enum ComplexidadeProjeto {
   baixa,
   media,
