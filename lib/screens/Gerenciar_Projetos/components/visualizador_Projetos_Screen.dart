@@ -801,7 +801,7 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
                   ? const _Etiqueta('Em revisão', aprovado: false)
                   : const _Etiqueta('Aprovado', aprovado: true),
               _AcoesLinha([
-                (FontAwesomeIcons.solidEye, 'Abrir documento',
+                (FontAwesomeIcons.eye, 'Abrir documento',
                     () => _abrirDocumento(d), false),
                 (FontAwesomeIcons.trashCan, 'Excluir documento',
                     () => _excluirDocumento(d), true),
@@ -844,7 +844,7 @@ class _VisualizarProjetoScreenState extends State<VisualizarProjetoScreen> {
               CelulaRelatorio(t.duracaoHoras == null ? '—' : '${t.duracaoHoras} h'),
               CelulaRelatorio(_ou(t.instrutor, '—')),
               _AcoesLinha([
-                (FontAwesomeIcons.userCheck, 'Controle de presença',
+                (FontAwesomeIcons.calendarCheck, 'Controle de presença',
                     () => _presenca(t), false),
                 (FontAwesomeIcons.penToSquare, 'Editar treinamento',
                     () => _editarTreinamento(t), false),
