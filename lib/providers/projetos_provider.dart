@@ -3,8 +3,8 @@ import 'package:fabrica_software_app/config/projeto_dto.dart';
 import 'package:fabrica_software_app/services/projeto_service.dart';
 import 'package:flutter/foundation.dart';
 import '../models/projeto.dart';
-import '../services/projetos_service.dart';
 import '../services/api_service.dart';
+import '../services/base_api_service.dart';
 
 /// Filtros do popover "Filtrar projetos". Vazio = sem filtro.
 class FiltrosProjeto {
@@ -349,8 +349,10 @@ class ProjetosProvider with ChangeNotifier {
 
       notifyListeners(); // Atualiza a tela
     } catch (e) {
-      _error = "Erro ao excluir: $e";
-      notifyListeners();
+      // Não usa `_error`: ele é o erro de carregamento e trocaria a lista
+      // toda pela mensagem. Quem chama mostra o aviso.
+      if (e is ApiException && e.message.trim().isNotEmpty) rethrow;
+      throw ApiException('Não foi possível excluir o projeto.');
     }
   }
 }

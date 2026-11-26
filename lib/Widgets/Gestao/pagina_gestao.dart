@@ -265,12 +265,29 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
           const SizedBox(height: 22),
 
           // ---------------- Tabela ----------------
-          if (widget.card == null) ...[
-            _cabecalhoTabela(),
-            const Divider(height: 1, color: Color(0x1F0F1030)),
-          ] else
+          if (widget.card == null)
+            // Tabela: um painel só, com o cabeçalho e as linhas separadas
+            // por divisórias (em vez de um bloco com sombra por linha).
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Container(
+                  decoration: StyleProjetos.painel(),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _cabecalhoTabela(),
+                      Expanded(child: _lista(itens)),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else ...[
             const SizedBox(height: 9),
-          Expanded(child: _lista(itens)),
+            Expanded(child: _lista(itens)),
+          ],
         ],
       ),
     );
@@ -367,8 +384,9 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
   }
 
   Widget _cabecalhoTabela() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+    return Container(
+      color: StyleProjetos.cabecalhoTabela,
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       child: Row(
         children: [
           for (final coluna in widget.colunas)
@@ -471,7 +489,7 @@ class _PaginaGestaoState<T> extends State<PaginaGestao<T>> {
   Widget _tabela(List<T> visiveis, bool temMais) {
     return ListView.builder(
       controller: _rolagem,
-      padding: const EdgeInsets.only(bottom: 28),
+      padding: const EdgeInsets.only(bottom: 8),
       itemCount: visiveis.length + 1,
       itemBuilder: (context, i) {
         if (i == visiveis.length) return _rodapeCarregando(temMais);
@@ -622,15 +640,16 @@ class _LinhaGestaoState extends State<_LinhaGestao> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
+      // Linha do painel: divisória embaixo e, no hover, um tom levemente
+      // azulado (azul-escuro da IDV bem claro), nunca branco.
       child: AnimatedContainer(
-        // De branco invisível para branco: Colors.transparent é preto
-        // invisível e fazia a linha passar por um cinza escuro no hover.
-        duration: const Duration(milliseconds: 90),
+        duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(_hover ? 0.5 : 0),
-          border: const Border(bottom: BorderSide(color: Color(0x1A0F1030))),
+          color: _hover ? StyleProjetos.linhaHover : StyleProjetos.fundoCard,
+          border: const Border(
+              bottom: BorderSide(color: StyleProjetos.divisoria)),
         ),
         child: Row(
           children: [

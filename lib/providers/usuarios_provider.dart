@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/usuario.dart';
+import '../services/base_api_service.dart';
 import '../services/usuarios_service.dart';
 
 class UsuariosProvider with ChangeNotifier {
@@ -46,32 +47,20 @@ class UsuariosProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> criarUsuario(Map<String, dynamic> data) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
+  // Criar/atualizar/excluir lançam o erro (em vez de preencher `_error`):
+  // `_error` é o erro de CARREGAMENTO e faz a PaginaGestao trocar a lista
+  // toda por "Não foi possível carregar". Quem chama mostra o aviso.
+  Future<void> criarUsuario(Map<String, dynamic> data) async {
     try {
       final usuario = await _service.criarUsuario(data);
       _usuarios?.add(usuario);
-      _error = null;
       notifyListeners();
-      return true;
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      throw _erroAcao(e, 'Não foi possível criar o usuário.');
     }
   }
 
-  Future<bool> atualizarUsuario(int id, Map<String, dynamic> data) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
+  Future<void> atualizarUsuario(int id, Map<String, dynamic> data) async {
     try {
       final usuario = await _service.atualizarUsuario(id, data);
       final index = _usuarios?.indexWhere((u) => u.id == id);
@@ -81,41 +70,30 @@ class UsuariosProvider with ChangeNotifier {
       if (_usuarioSelecionado?.id == id) {
         _usuarioSelecionado = usuario;
       }
-      _error = null;
       notifyListeners();
-      return true;
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      throw _erroAcao(e, 'Não foi possível atualizar o usuário.');
     }
   }
 
-  Future<bool> excluirUsuario(int id) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
+  Future<void> excluirUsuario(int id) async {
     try {
       await _service.excluirUsuario(id);
       _usuarios?.removeWhere((u) => u.id == id);
       if (_usuarioSelecionado?.id == id) {
         _usuarioSelecionado = null;
       }
-      _error = null;
       notifyListeners();
-      return true;
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      throw _erroAcao(e, 'Não foi possível excluir o usuário.');
     }
+  }
+
+  /// Mantém a mensagem da API (ApiException) e troca erros técnicos por
+  /// um texto amigável.
+  ApiException _erroAcao(Object e, String padrao) {
+    if (e is ApiException && e.message.trim().isNotEmpty) return e;
+    return ApiException(padrao);
   }
 
   void limparErro() {

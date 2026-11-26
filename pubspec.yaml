@@ -39,6 +39,10 @@ dependencies:
   google_fonts: ^8.1.0
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
+  image_picker: ^1.2.2
+  # Importar lista de participantes (.docx é um zip; seletor de arquivo na web)
+  archive: ^4.0.9
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

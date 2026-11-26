@@ -1,6 +1,7 @@
 import 'package:fabrica_software_app/Widgets/Barra_lateral/Barra_Lateral.dart';
 import 'package:fabrica_software_app/Widgets/Layout_principal/layout_principal.dart';
 import 'package:fabrica_software_app/Widgets/Modal_de_criacao/Modal_novo_projeto.dart';
+import 'package:fabrica_software_app/Widgets/Modal_de_criacao/components/idv_formulario.dart';
 import 'package:fabrica_software_app/models/projeto.dart';
 import 'package:fabrica_software_app/providers/projetos_provider.dart';
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
@@ -184,7 +185,8 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
   }
 
   Widget _grade(ProjetosProvider provider, List<Projeto> projetos) {
-    if (provider.isLoading) {
+    // Indicador só no 1º carregamento: ao recarregar, os cards ficam na tela.
+    if (provider.isLoading && !provider.projetosCarregados) {
       return const Center(
         child: CircularProgressIndicator(color: StyleProjetos.laranja),
       );
@@ -195,7 +197,7 @@ class _GerenciarProjetosState extends State<GerenciarProjetos> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const Icon(Icons.error_outline, color: CoresIdv.vermelho, size: 48),
             const SizedBox(height: 16),
             Text('Não foi possível carregar os projetos: ${provider.error}',
                 textAlign: TextAlign.center, style: StyleProjetos.contador),

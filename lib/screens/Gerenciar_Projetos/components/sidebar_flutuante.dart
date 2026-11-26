@@ -2,6 +2,11 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:fabrica_software_app/screens/Gerenciar_Projetos/Styles/style_projetos.dart';
+import 'package:fabrica_software_app/providers/auth_provider.dart';
+import 'package:fabrica_software_app/services/auth_service.dart';
+import 'package:fabrica_software_app/screens/Usuarios/components/usuario_modal.dart'
+    show niveisUsuario;
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -17,6 +22,7 @@ class SidebarFlutuante extends StatefulWidget {
     this.onPerfil,
     this.onSair,
     this.sempreAberta = false,
+    this.ocultos = const {},
   });
 
   final int indiceAtivo;
@@ -28,6 +34,10 @@ class SidebarFlutuante extends StatefulWidget {
   /// Use `true` quando o menu estiver dentro de um Drawer (celular).
   final bool sempreAberta;
 
+  /// Índices de [itens] que não aparecem (ex.: Gestão de usuários para
+  /// quem tem nível USUARIO).
+  final Set<int> ocultos;
+
   static const itens = [
     (icone: Icons.account_tree, rotulo: 'Projetos'),
     (icone: Icons.groups, rotulo: 'Equipe'),
@@ -35,6 +45,7 @@ class SidebarFlutuante extends StatefulWidget {
     (icone: Icons.manage_accounts, rotulo: 'Gestão de usuários'),
     (icone: Icons.how_to_reg, rotulo: 'Gestão de clientes'),
     (icone: Icons.memory, rotulo: 'Gestão de tecnologias'),
+    (icone: Icons.inventory_2, rotulo: 'Gestão de recursos'),
   ];
 
   @override
@@ -58,6 +69,39 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
 
   /// Pequeno atraso para o menu não abrir quando o mouse só passa por cima.
   Timer? _atraso;
+
+  /// Usuário logado (rodapé do menu).
+  String _nome = '';
+
+  /// Nome mostrado no rodapé: o do AuthProvider (muda ao editar o perfil)
+  /// ou, enquanto ele não carrega, o guardado no login.
+  String _nomeAtual = '';
+
+  /// Foto do usuário logado (null = mostra a inicial).
+  ImageProvider? _fotoAtual;
+  String _nivel = '';
+
+  /// Nível mostrado no rodapé: o do AuthProvider ou, enquanto ele não
+  /// carrega, o guardado no login.
+  String _nivelAtual = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarUsuario();
+  }
+
+  Future<void> _carregarUsuario() async {
+    // Foto guardada neste navegador (aparece no avatar do rodapé).
+    context.read<AuthProvider>().carregarFoto();
+    final nome = await AuthService.instance.userName;
+    final nivel = await AuthService.instance.userNivel;
+    if (!mounted) return;
+    setState(() {
+      _nome = (nome ?? '').trim();
+      _nivel = (nivel ?? '').trim();
+    });
+  }
 
   void _abrir() {
     if (widget.sempreAberta) return;
@@ -86,6 +130,14 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
 
   @override
   Widget build(BuildContext context) {
+    // Ao editar o perfil, o nome novo aparece na hora (lido aqui, no
+    // build: o Provider não aceita select dentro do AnimatedBuilder).
+    _nomeAtual =
+        (context.select<AuthProvider, String?>((a) => a.nome) ?? _nome).trim();
+    _fotoAtual = context.select<AuthProvider, ImageProvider?>((a) => a.foto.imagem);
+    _nivelAtual =
+        (context.select<AuthProvider, String?>((a) => a.userNivel) ?? _nivel)
+            .trim();
     return MouseRegion(
       onEnter: (_) => _abrir(),
       onExit: (_) => _fechar(),
@@ -140,7 +192,7 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
             child: Material(
               type: MaterialType.transparency,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 40, 0, 52),
+                padding: const EdgeInsets.fromLTRB(0, 40, 0, 26),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -163,7 +215,13 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
                       // laranja), então não tem toque nem destaque.
                     ),
                     const SizedBox(height: 31),
-                    for (var i = 0; i < SidebarFlutuante.itens.length; i++) ...[
+                    // Índices originais (o onSelecionar usa a posição em
+                    // RotasApp.menu), pulando os ocultos.
+                    for (final (n, i) in [
+                      for (var i = 0; i < SidebarFlutuante.itens.length; i++)
+                        if (!widget.ocultos.contains(i)) i
+                    ].indexed) ...[
+                      if (n > 0) const SizedBox(height: 17),
                       _Item(
                         t: t,
                         icone: SidebarFlutuante.itens[i].icone,
@@ -171,30 +229,25 @@ class _SidebarFlutuanteState extends State<SidebarFlutuante>
                         ativo: i == widget.indiceAtivo,
                         onTap: () => _executar(() => widget.onSelecionar(i)),
                       ),
-                      if (i < SidebarFlutuante.itens.length - 1)
-                        const SizedBox(height: 17),
                     ],
                     const Spacer(),
-                    _Item(
-                      t: t,
-                      icone: Icons.dark_mode,
-                      rotulo: 'Tema de preferência',
-                      onTap: () => _executar(widget.onAlternarTema),
+                    // Rodapé: usuário logado, tema e sair numa linha só.
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16 + 4 * t),
+                      child: Divider(
+                        height: 1,
+                        color: StyleProjetos.azulEscuro.withOpacity(0.10),
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    _Item(
+                    const SizedBox(height: 14),
+                    _RodapeUsuario(
                       t: t,
-                      icone: Icons.person,
-                      rotulo: 'Perfil',
-                      onTap: () => _executar(widget.onPerfil),
-                    ),
-                    const SizedBox(height: 32),
-                    _Item(
-                      t: t,
-                      icone: Icons.door_front_door,
-                      rotulo: 'Sair',
-                      negrito: true,
-                      onTap: () => _executar(widget.onSair),
+                      nome: _nomeAtual,
+                      foto: _fotoAtual,
+                      nivel: _nivelAtual,
+                      onPerfil: () => _executar(widget.onPerfil),
+                      onTema: () => _executar(widget.onAlternarTema),
+                      onSair: () => _executar(widget.onSair),
                     ),
                   ],
                 ),
@@ -214,14 +267,12 @@ class _Item extends StatelessWidget {
     required this.rotulo,
     required this.onTap,
     this.ativo = false,
-    this.negrito = false,
   });
 
   final double t;
   final IconData icone;
   final String rotulo;
   final bool ativo;
-  final bool negrito;
   final VoidCallback onTap;
 
   @override
@@ -237,7 +288,7 @@ class _Item extends StatelessWidget {
       rotulo: rotulo,
       estiloRotulo: GoogleFonts.inter(
         fontSize: 17,
-        fontWeight: negrito ? FontWeight.w600 : FontWeight.w400,
+        fontWeight: FontWeight.w400,
         color: ativo ? StyleProjetos.laranja : StyleProjetos.texto,
       ),
       onTap: onTap,
@@ -319,3 +370,162 @@ class _Linha extends StatelessWidget {
     );
   }
 }
+
+/// Rodapé do menu: avatar com a inicial, nome e perfil do usuário e os
+/// botões de tema e sair. Fechado, só o avatar (na coluna dos ícones).
+class _RodapeUsuario extends StatelessWidget {
+  const _RodapeUsuario({
+    required this.t,
+    required this.nome,
+    this.foto,
+    required this.nivel,
+    required this.onPerfil,
+    required this.onTema,
+    required this.onSair,
+  });
+
+  final double t;
+  final String nome;
+  final ImageProvider? foto;
+  final String nivel;
+  final VoidCallback onPerfil;
+  final VoidCallback onTema;
+  final VoidCallback onSair;
+
+  static const _avatar = 40.0;
+
+  String get _inicial => nome.isEmpty ? '?' : nome[0].toUpperCase();
+
+  /// Nome do nível com acento (USUARIO -> "Usuário"), o mesmo da Gestão de
+  /// usuários; nível fora da lista só ganha a inicial maiúscula.
+  String get _perfil => nivel.isEmpty
+      ? 'Usuário'
+      : niveisUsuario[nivel.toUpperCase()] ??
+          nivel[0].toUpperCase() + nivel.substring(1).toLowerCase();
+
+  @override
+  Widget build(BuildContext context) {
+    final recuo = (StyleProjetos.sidebarLargura - _avatar) / 2;
+    final visibilidade =
+        Curves.easeOut.transform(((t - 0.35) / 0.65).clamp(0.0, 1.0));
+
+    final avatar = _comDica(
+      context,
+      'Perfil',
+      Material(
+        color: StyleProjetos.azulEscuro,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPerfil,
+          child: SizedBox.square(
+            dimension: _avatar,
+            child: foto != null
+                ? Ink.image(image: foto!, fit: BoxFit.cover)
+                : Center(
+              child: Text(_inicial,
+                  style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white)),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return SizedBox(
+      height: _avatar + 8,
+      child: Row(
+        children: [
+          SizedBox(width: recuo),
+          avatar,
+          Expanded(
+            // Fechado: os botões não recebem toque (estão invisíveis).
+            child: IgnorePointer(
+              ignoring: visibilidade < 0.5,
+              child: Opacity(
+                opacity: visibilidade,
+                child: Transform.translate(
+                  offset: Offset(-10 * (1 - visibilidade), 0),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          onTap: onPerfil,
+                          borderRadius: BorderRadius.circular(10),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(nome.isEmpty ? 'Meu perfil' : nome,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: StyleProjetos.texto)),
+                              Text(_perfil,
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: StyleProjetos.textoSecundario)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      _BotaoRodape(
+                        icone: Icons.dark_mode_outlined,
+                        dica: 'Tema de preferência',
+                        onTap: onTema,
+                      ),
+                      _BotaoRodape(
+                        icone: Icons.logout_rounded,
+                        dica: 'Sair',
+                        onTap: onSair,
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BotaoRodape extends StatelessWidget {
+  const _BotaoRodape(
+      {required this.icone, required this.dica, required this.onTap});
+
+  final IconData icone;
+  final String dica;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _comDica(
+      context,
+      dica,
+      IconButton(
+        onPressed: onTap,
+        splashRadius: 20,
+        icon: Icon(icone, size: 22, color: StyleProjetos.azulEscuro),
+      ),
+    );
+  }
+}
+
+/// Dica de mouse só onde há Overlay: no desktop o menu fica fora do
+/// Navigator (sem Overlay) e o Tooltip quebraria; no Drawer do celular há.
+Widget _comDica(BuildContext context, String dica, Widget filho) =>
+    Overlay.maybeOf(context) == null
+        ? filho
+        : Tooltip(message: dica, child: filho);
