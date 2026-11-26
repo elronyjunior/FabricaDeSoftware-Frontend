@@ -297,6 +297,14 @@ class BotaoPrincipalIdv extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Desabilitado (sem ação e sem carregar): apagado, senão parecia ativo.
+    return Opacity(
+      opacity: aoTocar == null && !carregando ? 0.45 : 1,
+      child: _botao(),
+    );
+  }
+
+  Widget _botao() {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: perigo ? null : StyleProjetos.gradienteLaranja,
